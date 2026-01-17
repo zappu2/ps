@@ -1000,8 +1000,7 @@
         // ==========================================
         
         const auth = {
-            // SHA-256 hash of the password (currently "pasarskin2026")
-            passwordHash: '8421d17934c1935c05506ce13bda3c6b2ea59ad22320e5cd104e2a1498c8ac72', // CHANGE THIS
+            passwordHash: '86c8487e0bd9542f523bf1fee228a0dbe1827981bdcaeb628da95ce18c58254d',
             inactivityTimer: null,
             inactivityDuration: 30 * 60 * 1000, // 30 minutes in milliseconds
             
@@ -1077,23 +1076,49 @@
             
             // Unlock and show the app
             async unlockApp() {
-                // Show loading screen
-                document.getElementById('loadingScreen').classList.remove('hidden');
-                document.getElementById('loginScreen').classList.add('hidden');
-                
-                // Initialize the app and wait for data to load
-                if (typeof app !== 'undefined') {
-                    await app.init();
+                try {
+                    // Show loading screen
+                    const loadingScreen = document.getElementById('loadingScreen');
+                    const loginScreen = document.getElementById('loginScreen');
+                    const appContainer = document.getElementById('appContainer');
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    
+                    loadingScreen.classList.remove('hidden');
+                    loginScreen.classList.add('hidden');
+                    
+                    // Set a maximum timeout to prevent infinite loading
+                    const timeoutId = setTimeout(() => {
+                        loadingScreen.classList.add('hidden');
+                        appContainer.classList.add('unlocked');
+                        logoutBtn.style.display = 'block';
+                    }, 5000); // 5 second timeout
+                    
+                    // Initialize the app and wait for data to load
+                    if (typeof app !== 'undefined') {
+                        await app.init();
+                    }
+                    
+                    // Clear timeout if we finished before it
+                    clearTimeout(timeoutId);
+                    
+                    // Hide loading screen and show app
+                    loadingScreen.classList.add('hidden');
+                    appContainer.classList.add('unlocked');
+                    logoutBtn.style.display = 'block';
+                    
+                    // Start inactivity timer
+                    this.startInactivityTimer();
+                    this.setupActivityListeners();
+                } catch (error) {
+                    // Hide loading screen and show app anyway
+                    document.getElementById('loadingScreen').classList.add('hidden');
+                    document.getElementById('appContainer').classList.add('unlocked');
+                    document.getElementById('logoutBtn').style.display = 'block';
+                    
+                    // Start inactivity timer
+                    this.startInactivityTimer();
+                    this.setupActivityListeners();
                 }
-                
-                // Hide loading screen and show app
-                document.getElementById('loadingScreen').classList.add('hidden');
-                document.getElementById('appContainer').classList.add('unlocked');
-                document.getElementById('logoutBtn').style.display = 'block';
-                
-                // Start inactivity timer
-                this.startInactivityTimer();
-                this.setupActivityListeners();
             },
             
             // Show login screen
@@ -1255,19 +1280,25 @@
             editingIndex: null,
 
             async init() {
-                this.attachSearchListener();
-                this.updateStorageStatus();
-                
-                if (isFirebaseEnabled) {
-                    // Wait for Firebase data to load before continuing
-                    await this.loadFromFirebase();
-                    this.setupRealtimeListeners();
-                } else {
-                    this.loadFromLocalStorage();
+                try {
+                    this.attachSearchListener();
+                    this.updateStorageStatus();
+                    
+                    if (isFirebaseEnabled) {
+                        // Wait for Firebase data to load before continuing
+                        await this.loadFromFirebase();
+                        this.setupRealtimeListeners();
+                    } else {
+                        this.loadFromLocalStorage();
+                        this.renderAll();
+                    }
+                    
+                    this.renderCycleSelector();
+                } catch (error) {
+                    // If there's an error, still try to render with default data
+                    this.renderCycleSelector();
                     this.renderAll();
                 }
-                
-                this.renderCycleSelector();
             },
 
             updateStorageStatus() {
