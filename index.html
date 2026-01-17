@@ -394,6 +394,82 @@
             background: #dc2626;
         }
 
+        .edit-btn {
+            padding: 4px 8px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            margin-right: 4px;
+        }
+
+        .edit-btn:hover {
+            background: #2563eb;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #e2e8f0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            justify-content: flex-end;
+        }
+
+        input[type="date"] {
+            padding: 10px 16px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-family: inherit;
+            color-scheme: dark;
+        }
+
+        input[type="date"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
         @media (max-width: 768px) {
             .metrics {
                 grid-template-columns: 1fr;
@@ -427,6 +503,16 @@
             <div class="logo">🎮 PasarSkin</div>
             <div class="subtitle">CS:GO Skin Trading Inventory Tracker</div>
             <div id="storageStatus" style="margin-top: 10px; font-size: 12px; color: #64748b;"></div>
+            
+            <!-- Cycle Selector -->
+            <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                <label style="color: #94a3b8; font-size: 14px; font-weight: 500;">Current Cycle:</label>
+                <select id="cycleSelector" onchange="app.switchCycle(this.value)" style="padding: 8px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; font-size: 14px;">
+                    <option value="1">Cycle 1</option>
+                </select>
+                <button onclick="app.createNewCycle()" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">+ New Cycle</button>
+                <button onclick="app.manageCycles()" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">Manage Cycles</button>
+            </div>
         </header>
 
         <!-- Added form section for adding new items -->
@@ -456,6 +542,36 @@
                     <label for="youPinPrice">Current YouPin Price *</label>
                     <input type="text" id="youPinPrice" placeholder="e.g., 450.50">
                 </div>
+                <div class="form-group">
+                    <label for="salePriceOverride">Sale Price (Override)</label>
+                    <input type="text" id="salePriceOverride" placeholder="Auto-calculated if empty">
+                </div>
+                <div class="form-group">
+                    <label for="buyDate">Buy Date (Optional)</label>
+                    <input type="date" id="buyDate">
+                </div>
+                <div class="form-group">
+                    <label for="sellDate">Sell Date (Optional)</label>
+                    <input type="date" id="sellDate">
+                </div>
+                <div class="form-group">
+                    <label for="itemStatus">Status</label>
+                    <select id="itemStatus">
+                        <option value="in-stock">In Stock</option>
+                        <option value="sold">Sold</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="itemMethod">Method</label>
+                    <select id="itemMethod">
+                        <option value="Pricempire">Pricempire</option>
+                        <option value="Cashout">Cashout</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="itemNote">Note (Optional)</label>
+                    <input type="text" id="itemNote" placeholder="Add any notes here...">
+                </div>
             </div>
 
             <!-- Added calculation preview before adding item -->
@@ -477,6 +593,11 @@
             <button onclick="app.filterByStatus('all')" class="active" id="filterAll">All Items</button>
             <button onclick="app.filterByStatus('active')" id="filterActive">Active</button>
             <button onclick="app.filterByStatus('sold')" id="filterSold">Sold</button>
+            <div style="margin-left: auto; display: flex; gap: 12px; align-items: center;">
+                <span style="font-size: 12px; color: #94a3b8;">View:</span>
+                <button onclick="app.switchViewMode('simple')" id="viewSimple" class="active">Simple</button>
+                <button onclick="app.switchViewMode('complete')" id="viewComplete">Complete</button>
+            </div>
             <!-- Added export/import buttons -->
             <button onclick="app.exportToJSON()" class="btn-primary" style="margin-left: auto;">📥 Export JSON</button>
             <button onclick="document.getElementById('importFile').click()" class="btn-primary">📤 Import JSON</button>
@@ -508,6 +629,8 @@
                             <th>Sale Price</th>
                             <th>Profit</th>
                             <th>Margin %</th>
+                            <th>Buy Date</th>
+                            <th>Sell Date</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
@@ -520,13 +643,13 @@
         <div class="tab-content" id="summaryTab">
             <div class="table-wrapper">
                 <div class="table-header">
-                    <div class="table-title">Monthly Summary</div>
+                    <div class="table-title">Cycle Summary</div>
                 </div>
                 <table id="summaryTable">
                     <thead>
                         <tr>
-                            <th>Person</th>
-                            <th>Month</th>
+                            <th>Cycle</th>
+                            <th>Items</th>
                             <th>Total Investment (IDR)</th>
                             <th>Total Investment (CNY)</th>
                             <th>Profit %</th>
@@ -539,6 +662,40 @@
         </div>
 
         <div class="tab-content" id="peopleTab">
+            <!-- Add Person Form -->
+            <div class="add-item-form">
+                <div class="form-title">Add New Person Entry</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="personName">Person Name *</label>
+                        <select id="personName">
+                            <option value="">Select person</option>
+                            <option value="Daril">Daril</option>
+                            <option value="Arez">Arez</option>
+                            <option value="Fawwaz">Fawwaz</option>
+                            <option value="Panji">Panji</option>
+                            <option value="Other">Other (Custom)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="customPersonGroup" style="display: none;">
+                        <label for="customPersonName">Custom Name *</label>
+                        <input type="text" id="customPersonName" placeholder="Enter custom name">
+                    </div>
+                    <div class="form-group">
+                        <label for="personHargaIDR">Harga IDR *</label>
+                        <input type="text" id="personHargaIDR" placeholder="e.g., 1908500">
+                    </div>
+                    <div class="form-group">
+                        <label for="personTanggal">Tanggal Pengiriman *</label>
+                        <input type="date" id="personTanggal">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" onclick="app.addPerson()">Add Person</button>
+                    <button class="btn-secondary" onclick="app.resetPersonForm()">Clear</button>
+                </div>
+            </div>
+
             <div class="table-wrapper">
                 <div class="table-header">
                     <div class="table-title">Profit Per Person</div>
@@ -546,15 +703,106 @@
                 <table id="peopleTable">
                     <thead>
                         <tr>
+                            <th>No</th>
                             <th>Person</th>
-                            <th>Items Invested</th>
-                            <th>Total Investment (CNY)</th>
+                            <th>Harga IDR</th>
+                            <th>Harga CNY</th>
+                            <th>Tanggal Pengiriman</th>
                             <th>Profit Per Person (CNY)</th>
                             <th>Profit Per Person (IDR)</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="peopleTableBody"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Edit Inventory Item</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="editSkinName">Skin Name *</label>
+                    <input type="text" id="editSkinName">
+                </div>
+                <div class="form-group">
+                    <label for="editCondition">Condition</label>
+                    <select id="editCondition">
+                        <option value="">Select condition (optional)</option>
+                        <option value="Factory New">Factory New</option>
+                        <option value="Minimal Wear">Minimal Wear</option>
+                        <option value="Field-Tested">Field-Tested</option>
+                        <option value="Well-Worn">Well-Worn</option>
+                        <option value="Battle-Scarred">Battle-Scarred</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editBuyPriceIDR">Buy Price (IDR) *</label>
+                    <input type="text" id="editBuyPriceIDR">
+                </div>
+                <div class="form-group">
+                    <label for="editYouPinPrice">Current YouPin Price *</label>
+                    <input type="text" id="editYouPinPrice">
+                </div>
+                <div class="form-group">
+                    <label for="editSalePriceOverride">Sale Price (Override)</label>
+                    <input type="text" id="editSalePriceOverride" placeholder="Auto-calculated if empty">
+                </div>
+                <div class="form-group">
+                    <label for="editBuyDate">Buy Date (Optional)</label>
+                    <input type="date" id="editBuyDate">
+                </div>
+                <div class="form-group">
+                    <label for="editSellDate">Sell Date (Optional)</label>
+                    <input type="date" id="editSellDate">
+                </div>
+                <div class="form-group">
+                    <label for="editItemStatus">Status</label>
+                    <select id="editItemStatus">
+                        <option value="in-stock">In Stock</option>
+                        <option value="sold">Sold</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editItemMethod">Method</label>
+                    <select id="editItemMethod">
+                        <option value="Pricempire">Pricempire</option>
+                        <option value="Cashout">Cashout</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="editItemNote">Note (Optional)</label>
+                    <input type="text" id="editItemNote" placeholder="Add any notes here...">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="app.saveEdit()">Save Changes</button>
+                <button class="btn-secondary" onclick="app.closeEditModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cycle Management Modal -->
+    <div id="cycleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Manage Cycles</div>
+            <div id="cycleListContainer" style="max-height: 400px; overflow-y: auto;"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="app.closeCycleModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cycle Management Modal -->
+    <div id="cycleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Manage Cycles</div>
+            <div id="cycleListContainer" style="max-height: 400px; overflow-y: auto;"></div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="app.closeCycleModal()">Close</button>
             </div>
         </div>
     </div>
@@ -596,22 +844,50 @@
         }
 
         const app = {
-            data: [
-                { no: 1, name: "Driver Gloves | Overtake", condition: "Battle-Scarred", priceIDR: 950000, priceCNY: 395.83, currentYouPin: 448.00, salePrice: 443.52, profit: 47.69, profitMargin: 12.05, sold: false },
-                { no: 2, name: "Kukri Knife | Safari Mesh", condition: "Well-Worn", priceIDR: 760000, priceCNY: 316.67, currentYouPin: 370.89, salePrice: 368.43, profit: 51.76, profitMargin: 16.35, sold: false },
-            ],
+            // Cycle management
+            cycles: {
+                1: {
+                    name: 'Cycle 1',
+                    data: [
+                        { no: 1, name: "Driver Gloves | Overtake", condition: "Battle-Scarred", priceIDR: 950000, priceCNY: 395.83, currentYouPin: 448.00, salePrice: 443.52, profit: 47.69, profitMargin: 12.05, sold: false, buyDate: "", sellDate: "", method: "Pricempire", note: "" },
+                        { no: 2, name: "Kukri Knife | Safari Mesh", condition: "Well-Worn", priceIDR: 760000, priceCNY: 316.67, currentYouPin: 370.89, salePrice: 368.43, profit: 51.76, profitMargin: 16.35, sold: false, buyDate: "", sellDate: "", method: "Pricempire", note: "" },
+                    ],
+                    peopleData: [
+                        { no: 1, person: "Daril", hargaIDR: 1908500, hargaCNY: 795.21, tanggalPengiriman: "2026-01-01", profitCNY: 198.80, profitIDR: 476928 },
+                        { no: 2, person: "Arez", hargaIDR: 1908500, hargaCNY: 795.21, tanggalPengiriman: "2026-01-01", profitCNY: 198.80, profitIDR: 476928 },
+                        { no: 3, person: "Fawwaz", hargaIDR: 1908500, hargaCNY: 795.21, tanggalPengiriman: "2026-01-01", profitCNY: 198.80, profitIDR: 476928 },
+                        { no: 4, person: "Panji", hargaIDR: 1908500, hargaCNY: 795.21, tanggalPengiriman: "2026-01-01", profitCNY: 198.80, profitIDR: 476928 }
+                    ]
+                }
+            },
+            currentCycle: 1,
+            
+            // Quick access to current cycle data
+            get data() {
+                return this.cycles[this.currentCycle]?.data || [];
+            },
+            set data(value) {
+                if (!this.cycles[this.currentCycle]) {
+                    this.cycles[this.currentCycle] = { name: `Cycle ${this.currentCycle}`, data: [], peopleData: [] };
+                }
+                this.cycles[this.currentCycle].data = value;
+            },
+            get peopleData() {
+                return this.cycles[this.currentCycle]?.peopleData || [];
+            },
+            set peopleData(value) {
+                if (!this.cycles[this.currentCycle]) {
+                    this.cycles[this.currentCycle] = { name: `Cycle ${this.currentCycle}`, data: [], peopleData: [] };
+                }
+                this.cycles[this.currentCycle].peopleData = value;
+            },
             
             exchangeRate: 2400, // IDR to CNY conversion rate (approximate)
-            
-            peopleData: [
-                { person: "Daril", month: "January", investmentIDR: 1908500, investmentCNY: 795.21, profitPercent: 25.00, revenue: 2092356 },
-                { person: "Arez", month: "January", investmentIDR: 1908500, investmentCNY: 795.21, profitPercent: 25.00, revenue: 2092356 },
-                { person: "Fawwaz", month: "January", investmentIDR: 1908500, investmentCNY: 795.21, profitPercent: 25.00, revenue: 2092356 },
-                { person: "Panji", month: "January", investmentIDR: 1908500, investmentCNY: 795.21, profitPercent: 25.00, revenue: 2092356 }
-            ],
 
             currentFilter: 'all',
             currentTab: 'inventory',
+            viewMode: 'simple', // 'simple' or 'complete'
+            editingIndex: null,
 
             init() {
                 this.attachSearchListener();
@@ -623,6 +899,10 @@
                     this.loadFromLocalStorage();
                     this.renderAll();
                 }
+                
+                this.renderCycleSelector();
+                // Initial render for people tab (will be overwritten by Firebase if data exists)
+                console.log('Init complete, peopleData count:', this.peopleData.length);
             },
 
             updateStorageStatus() {
@@ -648,8 +928,18 @@
                     const savedData = localStorage.getItem('pasarSkinData');
                     if (savedData) {
                         const parsed = JSON.parse(savedData);
-                        if (parsed.data) this.data = parsed.data;
-                        if (parsed.peopleData) this.peopleData = parsed.peopleData;
+                        // Support both old and new format
+                        if (parsed.cycles) {
+                            this.cycles = parsed.cycles;
+                            this.currentCycle = parsed.currentCycle || 1;
+                        } else if (parsed.data) {
+                            // Migrate old format to new cycle format
+                            this.cycles[1] = {
+                                name: 'Cycle 1',
+                                data: parsed.data || [],
+                                peopleData: parsed.peopleData || []
+                            };
+                        }
                         if (parsed.exchangeRate) this.exchangeRate = parsed.exchangeRate;
                     }
                 } catch (error) {
@@ -660,8 +950,8 @@
             saveToLocalStorage() {
                 try {
                     const dataToSave = {
-                        data: this.data,
-                        peopleData: this.peopleData,
+                        cycles: this.cycles,
+                        currentCycle: this.currentCycle,
                         exchangeRate: this.exchangeRate
                     };
                     localStorage.setItem('pasarSkinData', JSON.stringify(dataToSave));
@@ -676,10 +966,21 @@
                     .then((snapshot) => {
                         const data = snapshot.val();
                         if (data) {
-                            if (data.data) this.data = data.data;
-                            if (data.peopleData) this.peopleData = data.peopleData;
+                            // Support both old and new format
+                            if (data.cycles) {
+                                this.cycles = data.cycles;
+                                this.currentCycle = data.currentCycle || 1;
+                            } else if (data.data) {
+                                // Migrate old format to new cycle format
+                                this.cycles[1] = {
+                                    name: 'Cycle 1',
+                                    data: data.data || [],
+                                    peopleData: data.peopleData || []
+                                };
+                            }
                             if (data.exchangeRate) this.exchangeRate = data.exchangeRate;
                         }
+                        this.renderCycleSelector();
                         this.renderAll();
                     })
                     .catch((error) => {
@@ -695,8 +996,8 @@
                 }
                 
                 const dataToSave = {
-                    data: this.data,
-                    peopleData: this.peopleData,
+                    cycles: this.cycles,
+                    currentCycle: this.currentCycle,
                     exchangeRate: this.exchangeRate,
                     lastUpdated: new Date().toISOString()
                 };
@@ -716,9 +1017,20 @@
                 ref.on('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
-                        if (data.data) this.data = data.data;
-                        if (data.peopleData) this.peopleData = data.peopleData;
+                        // Support both old and new format
+                        if (data.cycles) {
+                            this.cycles = data.cycles;
+                            this.currentCycle = data.currentCycle || 1;
+                        } else if (data.data) {
+                            // Migrate old format
+                            this.cycles[1] = {
+                                name: 'Cycle 1',
+                                data: data.data || [],
+                                peopleData: data.peopleData || []
+                            };
+                        }
                         if (data.exchangeRate) this.exchangeRate = data.exchangeRate;
+                        this.renderCycleSelector();
                         this.renderAll();
                     }
                 });
@@ -746,6 +1058,12 @@
                 const condition = document.getElementById('condition').value;
                 const buyPriceIDR = parseFloat(document.getElementById('buyPriceIDR').value);
                 const youPinPrice = parseFloat(document.getElementById('youPinPrice').value);
+                const salePriceOverride = document.getElementById('salePriceOverride').value.trim();
+                const buyDate = document.getElementById('buyDate').value;
+                const sellDate = document.getElementById('sellDate').value;
+                const itemStatus = document.getElementById('itemStatus').value;
+                const itemMethod = document.getElementById('itemMethod').value;
+                const itemNote = document.getElementById('itemNote').value.trim();
 
                 // Validation
                 if (!skinName) {
@@ -763,7 +1081,10 @@
 
                 // Calculations
                 const priceCNY = this.calculatePriceCNY(buyPriceIDR);
-                const salePrice = this.calculateSalePrice(youPinPrice);
+                // Use manual sale price if provided, otherwise calculate
+                const salePrice = salePriceOverride && !isNaN(parseFloat(salePriceOverride)) 
+                    ? parseFloat(salePriceOverride) 
+                    : this.calculateSalePrice(youPinPrice);
                 const profit = this.calculateProfit(salePrice, priceCNY);
                 const profitMargin = this.calculateProfitMargin(profit, priceCNY);
 
@@ -778,7 +1099,11 @@
                     salePrice: salePrice,
                     profit: profit,
                     profitMargin: profitMargin,
-                    sold: false
+                    sold: itemStatus === 'sold',
+                    buyDate: buyDate || '',
+                    sellDate: sellDate || '',
+                    method: itemMethod || 'Pricempire',
+                    note: itemNote || ''
                 };
 
                 // Add to data
@@ -801,7 +1126,103 @@
                 document.getElementById('condition').value = '';
                 document.getElementById('buyPriceIDR').value = '';
                 document.getElementById('youPinPrice').value = '';
+                document.getElementById('salePriceOverride').value = '';
+                document.getElementById('buyDate').value = '';
+                document.getElementById('sellDate').value = '';
+                document.getElementById('itemStatus').value = 'in-stock';
+                document.getElementById('itemMethod').value = 'Pricempire';
+                document.getElementById('itemNote').value = '';
                 document.getElementById('formPreview').classList.remove('show');
+            },
+
+            openEditModal(index) {
+                this.editingIndex = index;
+                const item = this.data[index];
+                
+                document.getElementById('editSkinName').value = item.name;
+                document.getElementById('editCondition').value = item.condition === 'N/A' ? '' : item.condition;
+                document.getElementById('editBuyPriceIDR').value = item.priceIDR;
+                document.getElementById('editYouPinPrice').value = item.currentYouPin;
+                document.getElementById('editSalePriceOverride').value = item.salePrice || '';
+                document.getElementById('editBuyDate').value = item.buyDate || '';
+                document.getElementById('editSellDate').value = item.sellDate || '';
+                document.getElementById('editItemStatus').value = item.sold ? 'sold' : 'in-stock';
+                document.getElementById('editItemMethod').value = item.method || 'Pricempire';
+                document.getElementById('editItemNote').value = item.note || '';
+                
+                document.getElementById('editModal').classList.add('show');
+            },
+
+            closeEditModal() {
+                document.getElementById('editModal').classList.remove('show');
+                this.editingIndex = null;
+            },
+
+            saveEdit() {
+                if (this.editingIndex === null) return;
+
+                const skinName = document.getElementById('editSkinName').value.trim();
+                const condition = document.getElementById('editCondition').value;
+                const buyPriceIDR = parseFloat(document.getElementById('editBuyPriceIDR').value);
+                const youPinPrice = parseFloat(document.getElementById('editYouPinPrice').value);
+                const salePriceOverride = document.getElementById('editSalePriceOverride').value.trim();
+                const buyDate = document.getElementById('editBuyDate').value;
+                const sellDate = document.getElementById('editSellDate').value;
+                const itemStatus = document.getElementById('editItemStatus').value;
+                const itemMethod = document.getElementById('editItemMethod').value;
+                const itemNote = document.getElementById('editItemNote').value.trim();
+
+                // Validation
+                if (!skinName) {
+                    alert('Please enter a skin name');
+                    return;
+                }
+                if (isNaN(buyPriceIDR) || buyPriceIDR <= 0) {
+                    alert('Please enter a valid buy price in IDR');
+                    return;
+                }
+                if (isNaN(youPinPrice) || youPinPrice <= 0) {
+                    alert('Please enter a valid YouPin price');
+                    return;
+                }
+
+                // Calculations
+                const priceCNY = this.calculatePriceCNY(buyPriceIDR);
+                // Use manual sale price if provided, otherwise calculate
+                const salePrice = salePriceOverride && !isNaN(parseFloat(salePriceOverride)) 
+                    ? parseFloat(salePriceOverride) 
+                    : this.calculateSalePrice(youPinPrice);
+                const profit = this.calculateProfit(salePrice, priceCNY);
+                const profitMargin = this.calculateProfitMargin(profit, priceCNY);
+
+                // Update item
+                this.data[this.editingIndex] = {
+                    ...this.data[this.editingIndex],
+                    name: skinName,
+                    condition: condition || 'N/A',
+                    priceIDR: buyPriceIDR,
+                    priceCNY: priceCNY,
+                    currentYouPin: youPinPrice,
+                    salePrice: salePrice,
+                    profit: profit,
+                    profitMargin: profitMargin,
+                    sold: itemStatus === 'sold',
+                    buyDate: buyDate || '',
+                    sellDate: sellDate || '',
+                    method: itemMethod || 'Pricempire',
+                    note: itemNote || ''
+                };
+
+                // Save to Firebase or localStorage
+                this.saveToFirebase();
+
+                // Close modal and update UI
+                this.closeEditModal();
+                if (!isFirebaseEnabled) {
+                    this.renderMetrics();
+                    this.renderInventory();
+                    this.renderPeople();
+                }
             },
 
             deleteItem(index) {
@@ -822,8 +1243,8 @@
 
             exportToJSON() {
                 const dataToExport = {
-                    data: this.data,
-                    peopleData: this.peopleData,
+                    cycles: this.cycles,
+                    currentCycle: this.currentCycle,
                     exchangeRate: this.exchangeRate
                 };
                 
@@ -849,25 +1270,63 @@
                     try {
                         const importedData = JSON.parse(e.target.result);
                         
-                        if (importedData.data && Array.isArray(importedData.data)) {
-                            this.data = importedData.data;
-                            if (importedData.peopleData) {
-                                this.peopleData = importedData.peopleData;
-                            }
+                        if (importedData.cycles) {
+                            // Import cycles as NEW cycles (never override existing)
+                            const existingCycleIds = Object.keys(this.cycles).map(id => parseInt(id));
+                            const maxExistingId = existingCycleIds.length > 0 ? Math.max(...existingCycleIds) : 0;
+                            
+                            let importedCount = 0;
+                            Object.entries(importedData.cycles).forEach(([cycleId, cycleData]) => {
+                                const newCycleId = maxExistingId + importedCount + 1;
+                                this.cycles[newCycleId] = {
+                                    name: cycleData.name || `Imported Cycle ${newCycleId}`,
+                                    data: cycleData.data || [],
+                                    peopleData: cycleData.peopleData || []
+                                };
+                                importedCount++;
+                            });
+                            
                             if (importedData.exchangeRate) {
                                 this.exchangeRate = importedData.exchangeRate;
                             }
                             
+                            // Switch to first imported cycle
+                            this.currentCycle = maxExistingId + 1;
+                            
                             // Save to Firebase or localStorage
                             this.saveToFirebase();
+                            this.renderCycleSelector();
                             
                             if (!isFirebaseEnabled) {
-                                this.renderMetrics();
-                                this.renderInventory();
-                                this.renderSummary();
-                                this.renderPeople();
+                                this.renderAll();
                             }
-                            alert('Data imported successfully!');
+                            alert(`Successfully imported ${importedCount} cycle(s) as new cycle(s)!`);
+                        } else if (importedData.data && Array.isArray(importedData.data)) {
+                            // Old format - import as NEW cycle (never override)
+                            const existingCycleIds = Object.keys(this.cycles).map(id => parseInt(id));
+                            const maxExistingId = existingCycleIds.length > 0 ? Math.max(...existingCycleIds) : 0;
+                            const newCycleId = maxExistingId + 1;
+                            
+                            this.cycles[newCycleId] = {
+                                name: `Imported Cycle ${newCycleId}`,
+                                data: importedData.data,
+                                peopleData: importedData.peopleData || []
+                            };
+                            if (importedData.exchangeRate) {
+                                this.exchangeRate = importedData.exchangeRate;
+                            }
+                            
+                            // Switch to new cycle
+                            this.currentCycle = newCycleId;
+                            
+                            // Save to Firebase or localStorage
+                            this.saveToFirebase();
+                            this.renderCycleSelector();
+                            
+                            if (!isFirebaseEnabled) {
+                                this.renderAll();
+                            }
+                            alert(`Data imported successfully as Cycle ${newCycleId}!`);
                         } else {
                             alert('Invalid JSON format. Please check your file.');
                         }
@@ -903,12 +1362,12 @@
                     {
                         label: "Total Profit (After Tax)",
                         value: `¥${totalProfit.toFixed(2)}`,
-                        change: `${((totalProfit / totalInvestmentCNY) * 100).toFixed(2)}% gain`,
+                        change: `${avgProfitMargin.toFixed(2)}% Avg Profit Margin`,
                         positive: totalProfit > 0
                     },
                     {
-                        label: "Average Profit Margin",
-                        value: `${avgProfitMargin.toFixed(2)}%`,
+                        label: "Profit Margin",
+                        value: `${((totalProfit / totalInvestmentCNY) * 100).toFixed(2)}%`,
                         change: `${this.data.length} items`,
                         positive: avgProfitMargin > 0
                     }
@@ -926,67 +1385,365 @@
 
             renderInventory() {
                 const tbody = document.getElementById('inventoryTableBody');
+                const thead = document.querySelector('#inventoryTable thead tr');
                 const filtered = this.getFilteredData();
                 
-                tbody.innerHTML = filtered.map((item, index) => `
-                    <tr>
-                        <td>${item.no}</td>
-                        <td class="item-name">${item.name}</td>
-                        <td>${item.condition}</td>
-                        <td>${item.priceIDR.toLocaleString('id-ID')}</td>
-                        <td>¥${item.priceCNY.toFixed(2)}</td>
-                        <td>¥${item.currentYouPin.toFixed(2)}</td>
-                        <td>¥${item.salePrice.toFixed(2)}</td>
-                        <td class="${item.profit >= 0 ? 'positive' : 'negative'}">¥${item.profit.toFixed(2)}</td>
-                        <td class="${item.profitMargin >= 0 ? 'positive' : 'negative'}">
-                            <span class="profit-indicator ${item.profitMargin >= 0 ? 'positive' : 'negative'}"></span>
-                            ${item.profitMargin.toFixed(2)}%
-                        </td>
-                        <td><span class="neutral">${item.sold ? 'Sold' : 'In Stock'}</span></td>
-                        <td><button class="delete-btn" onclick="app.deleteItem(${this.data.indexOf(item)})">Delete</button></td>
-                    </tr>
-                `).join('');
+                if (this.viewMode === 'simple') {
+                    // Simple view header
+                    thead.innerHTML = `
+                        <th>No</th>
+                        <th>Skin Name</th>
+                        <th>Condition</th>
+                        <th>Price CNY</th>
+                        <th>YouPin</th>
+                        <th>Sale Price</th>
+                        <th>Profit</th>
+                        <th>Margin %</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    `;
+                    
+                    tbody.innerHTML = filtered.map((item, index) => `
+                        <tr>
+                            <td>${item.no}</td>
+                            <td class="item-name">${item.name}</td>
+                            <td>${item.condition}</td>
+                            <td>¥${item.priceCNY.toFixed(2)}</td>
+                            <td>¥${item.currentYouPin.toFixed(2)}</td>
+                            <td>¥${item.salePrice.toFixed(2)}</td>
+                            <td class="${item.profit >= 0 ? 'positive' : 'negative'}">¥${item.profit.toFixed(2)}</td>
+                            <td class="${item.profitMargin >= 0 ? 'positive' : 'negative'}">
+                                <span class="profit-indicator ${item.profitMargin >= 0 ? 'positive' : 'negative'}"></span>
+                                ${item.profitMargin.toFixed(2)}%
+                            </td>
+                            <td><span class="neutral">${item.sold ? 'Sold' : 'In Stock'}</span></td>
+                            <td>
+                                <button class="edit-btn" onclick="app.openEditModal(${this.data.indexOf(item)})">Edit</button>
+                                <button class="delete-btn" onclick="app.deleteItem(${this.data.indexOf(item)})">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    // Complete view header
+                    thead.innerHTML = `
+                        <th>No</th>
+                        <th>Skin Name</th>
+                        <th>Condition</th>
+                        <th>Price IDR</th>
+                        <th>Price CNY</th>
+                        <th>YouPin</th>
+                        <th>Sale Price</th>
+                        <th>Profit</th>
+                        <th>Margin %</th>
+                        <th>Buy Date</th>
+                        <th>Sell Date</th>
+                        <th>Method</th>
+                        <th>Note</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    `;
+                    
+                    tbody.innerHTML = filtered.map((item, index) => `
+                        <tr>
+                            <td>${item.no}</td>
+                            <td class="item-name">${item.name}</td>
+                            <td>${item.condition}</td>
+                            <td>${item.priceIDR.toLocaleString('id-ID')}</td>
+                            <td>¥${item.priceCNY.toFixed(2)}</td>
+                            <td>¥${item.currentYouPin.toFixed(2)}</td>
+                            <td>¥${item.salePrice.toFixed(2)}</td>
+                            <td class="${item.profit >= 0 ? 'positive' : 'negative'}">¥${item.profit.toFixed(2)}</td>
+                            <td class="${item.profitMargin >= 0 ? 'positive' : 'negative'}">
+                                <span class="profit-indicator ${item.profitMargin >= 0 ? 'positive' : 'negative'}"></span>
+                                ${item.profitMargin.toFixed(2)}%
+                            </td>
+                            <td>${item.buyDate || '-'}</td>
+                            <td>${item.sellDate || '-'}</td>
+                            <td>${item.method || 'Pricempire'}</td>
+                            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.note || ''}">${item.note || '-'}</td>
+                            <td><span class="neutral">${item.sold ? 'Sold' : 'In Stock'}</span></td>
+                            <td>
+                                <button class="edit-btn" onclick="app.openEditModal(${this.data.indexOf(item)})">Edit</button>
+                                <button class="delete-btn" onclick="app.deleteItem(${this.data.indexOf(item)})">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            },
+
+            switchViewMode(mode) {
+                this.viewMode = mode;
+                document.getElementById('viewSimple').classList.toggle('active', mode === 'simple');
+                document.getElementById('viewComplete').classList.toggle('active', mode === 'complete');
+                this.renderInventory();
             },
 
             renderSummary() {
                 const tbody = document.getElementById('summaryTableBody');
-                tbody.innerHTML = this.peopleData.map(item => `
-                    <tr>
-                        <td>${item.person}</td>
-                        <td>${item.month}</td>
-                        <td>${item.investmentIDR.toLocaleString('id-ID')}</td>
-                        <td>¥${item.investmentCNY.toFixed(2)}</td>
-                        <td class="positive">${item.profitPercent.toFixed(2)}%</td>
-                        <td>${item.revenue.toLocaleString('id-ID')}</td>
-                    </tr>
-                `).join('');
+                
+                console.log('Rendering summary, cycles:', this.cycles);
+                
+                // Calculate per-cycle summary from all cycles
+                const cycleEntries = Object.entries(this.cycles);
+                
+                if (cycleEntries.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="no-data">No cycles available</td></tr>';
+                    return;
+                }
+                
+                const cycleRows = cycleEntries.map(([cycleId, cycle]) => {
+                    const cycleData = cycle.data || [];
+                    const totalInvestmentIDR = cycleData.reduce((sum, item) => sum + (item.priceIDR || 0), 0);
+                    const totalInvestmentCNY = cycleData.reduce((sum, item) => sum + (item.priceCNY || 0), 0);
+                    const totalProfit = cycleData.reduce((sum, item) => sum + (item.profit || 0), 0);
+                    const profitPercent = totalInvestmentCNY > 0 ? (totalProfit / totalInvestmentCNY * 100) : 0;
+                    const totalRevenue = totalInvestmentIDR + (totalProfit * this.exchangeRate);
+                    
+                    return `
+                        <tr style="${cycleId == this.currentCycle ? 'background: rgba(59, 130, 246, 0.1);' : ''}">
+                            <td>${cycle.name || `Cycle ${cycleId}`}</td>
+                            <td>${cycleData.length} items</td>
+                            <td>${totalInvestmentIDR.toLocaleString('id-ID')}</td>
+                            <td>¥${totalInvestmentCNY.toFixed(2)}</td>
+                            <td class="${profitPercent >= 0 ? 'positive' : 'negative'}">${profitPercent.toFixed(2)}%</td>
+                            <td>${totalRevenue.toLocaleString('id-ID')}</td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                tbody.innerHTML = cycleRows || '<tr><td colspan="6" class="no-data">No cycle data available</td></tr>';
             },
 
             renderPeople() {
                 const tbody = document.getElementById('peopleTableBody');
-                const peopleMap = {};
-
-                this.data.forEach(item => {
-                    if (!peopleMap[item.name]) {
-                        peopleMap[item.name] = { items: 0, investmentCNY: 0, profitCNY: 0 };
+                
+                console.log('Rendering people, count:', this.peopleData.length);
+                console.log('People data:', this.peopleData);
+                
+                if (this.peopleData.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="no-data">No people entries yet. Add your first entry above!</td></tr>';
+                    return;
+                }
+                
+                // Calculate total profit from CURRENT CYCLE inventory only
+                const totalInventoryProfit = this.data.reduce((sum, item) => sum + item.profit, 0);
+                console.log('Total inventory profit (current cycle):', totalInventoryProfit);
+                
+                // Calculate total capital invested by all people
+                const totalCapitalCNY = this.peopleData.reduce((sum, person) => {
+                    const capital = person.hargaCNY || person.investmentCNY || 0;
+                    return sum + capital;
+                }, 0);
+                const totalCapitalIDR = this.peopleData.reduce((sum, person) => {
+                    const capital = person.hargaIDR || person.investmentIDR || 0;
+                    return sum + capital;
+                }, 0);
+                console.log('Total capital CNY:', totalCapitalCNY);
+                
+                // Calculate total inventory cost (actual money spent)
+                const totalInventoryCostCNY = this.data.reduce((sum, item) => sum + item.priceCNY, 0);
+                const totalInventoryCostIDR = this.data.reduce((sum, item) => sum + item.priceIDR, 0);
+                
+                // Calculate leftover (SISA) - capital that wasn't spent on inventory
+                const leftoverCNY = totalCapitalCNY - totalInventoryCostCNY;
+                const leftoverIDR = totalCapitalIDR - totalInventoryCostIDR;
+                console.log('Leftover (SISA) CNY:', leftoverCNY, 'IDR:', leftoverIDR);
+                
+                const html = this.peopleData.map((person, index) => {
+                    // Handle both old and new data formats
+                    const no = person.no || (index + 1);
+                    const name = person.person || 'Unknown';
+                    const hargaIDR = person.hargaIDR || person.investmentIDR || 0;
+                    const hargaCNY = person.hargaCNY || person.investmentCNY || 0;
+                    const tanggal = person.tanggalPengiriman || person.month || '-';
+                    
+                    // Calculate profit per person PROPORTIONALLY based on capital invested
+                    // Each person gets profit proportional to their capital contribution
+                    let profitCNY = 0;
+                    let leftoverShareCNY = 0;
+                    if (totalCapitalCNY > 0) {
+                        const capitalShare = hargaCNY / totalCapitalCNY; // Person's percentage of total capital
+                        profitCNY = totalInventoryProfit * capitalShare;
+                        leftoverShareCNY = leftoverCNY * capitalShare; // Person's share of leftover
                     }
-                    peopleMap[item.name].items++;
-                    peopleMap[item.name].investmentCNY += item.priceCNY;
-                    peopleMap[item.name].profitCNY += item.profit * 0.25;
-                });
-
-                tbody.innerHTML = Object.entries(peopleMap).map(([person, data]) => {
-                    const profitIDR = data.profitCNY * this.exchangeRate;
+                    
+                    // Total profit = inventory profit + leftover share
+                    const totalProfitCNY = profitCNY + leftoverShareCNY;
+                    const profitIDR = profitCNY * this.exchangeRate;
+                    const leftoverShareIDR = leftoverShareCNY * this.exchangeRate;
+                    const totalProfitIDR = totalProfitCNY * this.exchangeRate;
+                    
                     return `
                         <tr>
-                            <td>${person}</td>
-                            <td>${data.items}</td>
-                            <td>¥${data.investmentCNY.toFixed(2)}</td>
-                            <td class="${data.profitCNY >= 0 ? 'positive' : 'negative'}">¥${data.profitCNY.toFixed(2)}</td>
-                            <td class="${data.profitCNY >= 0 ? 'positive' : 'negative'}">${profitIDR.toLocaleString('id-ID')}</td>
+                            <td>${no}</td>
+                            <td>${name}</td>
+                            <td>${hargaIDR.toLocaleString('id-ID')}</td>
+                            <td>¥${hargaCNY.toFixed(2)}</td>
+                            <td>${tanggal}</td>
+                            <td class="${totalProfitCNY >= 0 ? 'positive' : 'negative'}">¥${totalProfitCNY.toFixed(2)}</td>
+                            <td class="${totalProfitIDR >= 0 ? 'positive' : 'negative'}">${totalProfitIDR.toLocaleString('id-ID')}</td>
+                            <td>
+                                <button class="edit-btn" onclick="app.editPerson(${index})">Edit</button>
+                                <button class="delete-btn" onclick="app.deletePerson(${index})">Delete</button>
+                            </td>
                         </tr>
                     `;
                 }).join('');
+                
+                console.log('Generated HTML length:', html.length);
+                tbody.innerHTML = html;
+                console.log('Table body updated, row count:', tbody.querySelectorAll('tr').length);
+            },
+
+            addPerson() {
+                let personName = document.getElementById('personName').value;
+                const customName = document.getElementById('customPersonName').value.trim();
+                const hargaIDRInput = document.getElementById('personHargaIDR').value;
+                const tanggal = document.getElementById('personTanggal').value;
+
+                console.log('Adding person:', { personName, hargaIDRInput, tanggal }); // Debug
+
+                // If "Other" is selected, use custom name
+                if (personName === 'Other' && customName) {
+                    personName = customName;
+                } else if (personName === 'Other' && !customName) {
+                    alert('Please enter a custom name');
+                    return;
+                }
+
+                // Validation
+                if (!personName || personName === '') {
+                    alert('Please select a person');
+                    return;
+                }
+
+                const hargaIDR = parseFloat(hargaIDRInput.replace(/[^0-9.]/g, ''));
+                if (isNaN(hargaIDR) || hargaIDR <= 0) {
+                    alert('Please enter a valid Harga IDR (numbers only)');
+                    return;
+                }
+                if (!tanggal) {
+                    alert('Please select a date');
+                    return;
+                }
+
+                // Calculate values
+                const hargaCNY = hargaIDR / this.exchangeRate;
+                const totalProfit = this.data.reduce((sum, item) => sum + item.profit, 0);
+                
+                // Calculate total capital (including the new person's contribution)
+                const existingCapitalCNY = this.peopleData.reduce((sum, person) => {
+                    return sum + (person.hargaCNY || person.investmentCNY || 0);
+                }, 0);
+                const existingCapitalIDR = this.peopleData.reduce((sum, person) => {
+                    return sum + (person.hargaIDR || person.investmentIDR || 0);
+                }, 0);
+                const totalCapitalCNY = existingCapitalCNY + hargaCNY;
+                const totalCapitalIDR = existingCapitalIDR + hargaIDR;
+                
+                // Calculate leftover (SISA)
+                const totalInventoryCostCNY = this.data.reduce((sum, item) => sum + item.priceCNY, 0);
+                const totalInventoryCostIDR = this.data.reduce((sum, item) => sum + item.priceIDR, 0);
+                const leftoverCNY = totalCapitalCNY - totalInventoryCostCNY;
+                
+                // Calculate proportional profit for new person (including leftover share)
+                const capitalShare = hargaCNY / totalCapitalCNY;
+                const inventoryProfitCNY = totalProfit * capitalShare;
+                const leftoverShareCNY = leftoverCNY * capitalShare;
+                const totalProfitCNY = inventoryProfitCNY + leftoverShareCNY;
+                const totalProfitIDR = totalProfitCNY * this.exchangeRate;
+
+                // Create new person entry
+                const newPerson = {
+                    no: this.peopleData.length + 1,
+                    person: personName,
+                    hargaIDR: hargaIDR,
+                    hargaCNY: hargaCNY,
+                    tanggalPengiriman: tanggal,
+                    profitCNY: totalProfitCNY,
+                    profitIDR: totalProfitIDR
+                };
+
+                console.log('New person:', newPerson); // Debug
+                this.peopleData.push(newPerson);
+                
+                // Save and render
+                this.saveToFirebase();
+                this.resetPersonForm();
+                
+                // Force render immediately (Firebase listener will update later)
+                this.renderPeople();
+            },
+
+            resetPersonForm() {
+                document.getElementById('personName').value = '';
+                document.getElementById('customPersonName').value = '';
+                document.getElementById('personHargaIDR').value = '';
+                document.getElementById('personTanggal').value = '';
+                document.getElementById('customPersonGroup').style.display = 'none';
+            },
+
+            editPerson(index) {
+                const person = this.peopleData[index];
+                const newName = prompt('Enter person name:', person.person);
+                const newHargaIDR = prompt('Enter Harga IDR:', person.hargaIDR);
+                const newTanggal = prompt('Enter Tanggal Pengiriman (YYYY-MM-DD):', person.tanggalPengiriman);
+
+                let changed = false;
+
+                if (newName !== null && newName.trim() !== '') {
+                    this.peopleData[index].person = newName.trim();
+                    changed = true;
+                }
+                
+                if (newHargaIDR !== null && !isNaN(parseFloat(newHargaIDR))) {
+                    const hargaIDR = parseFloat(newHargaIDR);
+                    this.peopleData[index].hargaIDR = hargaIDR;
+                    this.peopleData[index].hargaCNY = hargaIDR / this.exchangeRate;
+                    
+                    // Recalculate profit proportionally (including leftover)
+                    const totalProfit = this.data.reduce((sum, item) => sum + item.profit, 0);
+                    const totalCapitalCNY = this.peopleData.reduce((sum, person) => {
+                        return sum + (person.hargaCNY || person.investmentCNY || 0);
+                    }, 0);
+                    const totalCapitalIDR = this.peopleData.reduce((sum, person) => {
+                        return sum + (person.hargaIDR || person.investmentIDR || 0);
+                    }, 0);
+                    
+                    // Calculate leftover
+                    const totalInventoryCostCNY = this.data.reduce((sum, item) => sum + item.priceCNY, 0);
+                    const leftoverCNY = totalCapitalCNY - totalInventoryCostCNY;
+                    
+                    if (totalCapitalCNY > 0) {
+                        const capitalShare = this.peopleData[index].hargaCNY / totalCapitalCNY;
+                        const inventoryProfitCNY = totalProfit * capitalShare;
+                        const leftoverShareCNY = leftoverCNY * capitalShare;
+                        const totalProfitCNY = inventoryProfitCNY + leftoverShareCNY;
+                        this.peopleData[index].profitCNY = totalProfitCNY;
+                        this.peopleData[index].profitIDR = totalProfitCNY * this.exchangeRate;
+                    }
+                    changed = true;
+                }
+
+                if (newTanggal !== null && newTanggal.trim() !== '') {
+                    this.peopleData[index].tanggalPengiriman = newTanggal.trim();
+                    changed = true;
+                }
+
+                if (changed) {
+                    this.saveToFirebase();
+                    this.renderPeople();
+                }
+            },
+
+            deletePerson(index) {
+                if (confirm('Are you sure you want to delete this person entry?')) {
+                    this.peopleData.splice(index, 1);
+                    // Reassign numbers
+                    this.peopleData.forEach((person, idx) => person.no = idx + 1);
+                    this.saveToFirebase();
+                    this.renderPeople();
+                }
             },
 
             getFilteredData() {
@@ -1016,17 +1773,171 @@
 
             switchTab(tab) {
                 this.currentTab = tab;
+                
+                // Remove active class from all tabs
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                
+                // Remove active class from all tab contents
                 document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
                 
-                const tabMap = { inventory: 'inventoryTab', summary: 'summaryTab', people: 'peopleTab' };
-                document.getElementById(tab).classList.add('active');
-                document.getElementById(tabMap[tab]).classList.add('active');
+                // Add active class to the clicked tab
+                const clickedTab = event.target;
+                clickedTab.classList.add('active');
+                
+                // Show the corresponding tab content
+                const tabMap = { 
+                    inventory: 'inventoryTab', 
+                    summary: 'summaryTab', 
+                    people: 'peopleTab' 
+                };
+                
+                const targetTab = document.getElementById(tabMap[tab]);
+                if (targetTab) {
+                    targetTab.classList.add('active');
+                }
+                
+                // Render the content for the active tab
+                if (tab === 'inventory') {
+                    this.renderInventory();
+                } else if (tab === 'summary') {
+                    this.renderSummary();
+                } else if (tab === 'people') {
+                    this.renderPeople();
+                }
+            },
+
+            renderCycleSelector() {
+                const selector = document.getElementById('cycleSelector');
+                const cycleIds = Object.keys(this.cycles).sort((a, b) => parseInt(a) - parseInt(b));
+                
+                selector.innerHTML = cycleIds.map(id => 
+                    `<option value="${id}" ${id == this.currentCycle ? 'selected' : ''}>${this.cycles[id].name}</option>`
+                ).join('');
+            },
+
+            switchCycle(cycleId) {
+                this.currentCycle = parseInt(cycleId);
+                this.saveToFirebase();
+                this.renderAll();
+            },
+
+            createNewCycle() {
+                const cycleName = prompt('Enter name for new cycle:', `Cycle ${Object.keys(this.cycles).length + 1}`);
+                if (!cycleName) return;
+                
+                const newCycleId = Math.max(...Object.keys(this.cycles).map(id => parseInt(id))) + 1;
+                this.cycles[newCycleId] = {
+                    name: cycleName,
+                    data: [],
+                    peopleData: []
+                };
+                
+                this.currentCycle = newCycleId;
+                this.renderCycleSelector();
+                this.saveToFirebase();
+                this.renderAll();
+                alert(`New cycle "${cycleName}" created!`);
+            },
+
+            manageCycles() {
+                const container = document.getElementById('cycleListContainer');
+                const cycleEntries = Object.entries(this.cycles).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+                
+                const html = cycleEntries.map(([id, cycle]) => {
+                    const isCurrent = id == this.currentCycle;
+                    const isLast = cycleEntries.length === 1;
+                    
+                    return `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; margin-bottom: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 8px; ${isCurrent ? 'border-color: #3b82f6;' : ''}">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">
+                                    ${cycle.name || `Cycle ${id}`}
+                                    ${isCurrent ? '<span style="margin-left: 8px; padding: 2px 8px; background: #3b82f6; border-radius: 4px; font-size: 11px;">CURRENT</span>' : ''}
+                                </div>
+                                <div style="font-size: 12px; color: #94a3b8;">
+                                    ${(cycle.data || []).length} items, ${(cycle.peopleData || []).length} people
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="edit-btn" onclick="app.renameCycle(${id})" style="padding: 6px 12px;">Rename</button>
+                                <button class="delete-btn" onclick="app.deleteCycle(${id})" 
+                                    ${isCurrent || isLast ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : 'style="padding: 6px 12px;"'}>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.innerHTML = html || '<div class="no-data">No cycles available</div>';
+                document.getElementById('cycleModal').classList.add('show');
+            },
+
+            closeCycleModal() {
+                document.getElementById('cycleModal').classList.remove('show');
+            },
+
+            renameCycle(cycleId) {
+                const cycle = this.cycles[cycleId];
+                if (!cycle) return;
+                
+                const newName = prompt(`Rename "${cycle.name}" to:`, cycle.name);
+                if (newName && newName.trim()) {
+                    this.cycles[cycleId].name = newName.trim();
+                    this.renderCycleSelector();
+                    this.saveToFirebase();
+                    this.manageCycles(); // Refresh the modal
+                    this.renderAll();
+                }
+            },
+
+            deleteCycle(cycleId) {
+                if (cycleId == this.currentCycle) {
+                    alert('Cannot delete the current cycle. Switch to another cycle first.');
+                    return;
+                }
+                
+                if (Object.keys(this.cycles).length <= 1) {
+                    alert('Cannot delete the last cycle.');
+                    return;
+                }
+                
+                const cycle = this.cycles[cycleId];
+                if (confirm(`Delete cycle "${cycle.name}"?\n\nThis will permanently delete ${(cycle.data || []).length} items and ${(cycle.peopleData || []).length} people entries.\n\nThis cannot be undone!`)) {
+                    delete this.cycles[cycleId];
+                    this.renderCycleSelector();
+                    this.saveToFirebase();
+                    this.manageCycles(); // Refresh the modal
+                    this.renderAll();
+                }
             },
 
             attachSearchListener() {
                 document.getElementById('searchInput').addEventListener('input', () => {
                     this.renderInventory();
+                });
+                
+                // Close modal when clicking outside
+                document.getElementById('editModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'editModal') {
+                        this.closeEditModal();
+                    }
+                });
+
+                document.getElementById('cycleModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'cycleModal') {
+                        this.closeCycleModal();
+                    }
+                });
+
+                // Handle custom person name field
+                document.getElementById('personName').addEventListener('change', (e) => {
+                    const customGroup = document.getElementById('customPersonGroup');
+                    if (e.target.value === 'Other') {
+                        customGroup.style.display = 'block';
+                    } else {
+                        customGroup.style.display = 'none';
+                    }
                 });
             }
         };
