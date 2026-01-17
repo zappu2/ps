@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PasarSkin - Inventory Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+            letter-spacing: 0.05em;
+        }
+
+        /* Added styles for the add item form */
+        .add-item-form {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .form-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 10px 16px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-primary {
+            padding: 10px 20px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            padding: 10px 20px;
+            background: #475569;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #334155;
+        }
+
+        .form-preview {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .form-preview.show {
+            display: block;
+        }
+
+        .preview-item {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+
+        .preview-item strong {
+            color: #e2e8f0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        button.active {
+            background: #06b6d4;
+        }
+
+        input[type="text"] {
+            padding: 10px 16px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .metric-positive {
+            color: #10b981;
+        }
+
+        .metric-negative {
+            color: #ef4444;
+        }
+
+        .metric-neutral {
+            color: #3b82f6;
+        }
+
+        .metric-change {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .table-wrapper {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+
+        .table-header {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 16px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .table-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.6);
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: left;
+            padding: 12px 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #334155;
+            position: sticky;
+            top: 0;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .item-name {
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+
+        .positive {
+            color: #10b981;
+        }
+
+        .negative {
+            color: #ef4444;
+        }
+
+        .neutral {
+            color: #64748b;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        .tab:hover {
+            color: #cbd5e1;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .profit-indicator {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .profit-indicator.positive {
+            background: #10b981;
+        }
+
+        .profit-indicator.negative {
+            background: #ef4444;
+        }
+
+        .delete-btn {
+            padding: 4px 8px;
+            background: #ef4444;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .delete-btn:hover {
+            background: #dc2626;
+        }
+
+        @media (max-width: 768px) {
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+
+            input[type="text"] {
+                width: 100%;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+
+            .metric-value {
+                font-size: 20px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">🎮 PasarSkin</div>
+            <div class="subtitle">CS:GO Skin Trading Inventory Tracker</div>
+            <div id="storageStatus" style="margin-top: 10px; font-size: 12px; color: #64748b;"></div>
+        </header>
+
+        <!-- Added form section for adding new items -->
+        <div class="add-item-form">
+            <div class="form-title">Add New Inventory Item</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="skinName">Skin Name *</label>
+                    <input type="text" id="skinName" placeholder="e.g., AK-47 | Dragon Lore">
+                </div>
+                <div class="form-group">
+                    <label for="condition">Condition</label>
+                    <select id="condition">
+                        <option value="">Select condition (optional)</option>
+                        <option value="Factory New">Factory New</option>
+                        <option value="Minimal Wear">Minimal Wear</option>
+                        <option value="Field-Tested">Field-Tested</option>
+                        <option value="Well-Worn">Well-Worn</option>
+                        <option value="Battle-Scarred">Battle-Scarred</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="buyPriceIDR">Buy Price (IDR) *</label>
+                    <input type="text" id="buyPriceIDR" placeholder="e.g., 1000000">
+                </div>
+                <div class="form-group">
+                    <label for="youPinPrice">Current YouPin Price *</label>
+                    <input type="text" id="youPinPrice" placeholder="e.g., 450.50">
+                </div>
+            </div>
+
+            <!-- Added calculation preview before adding item -->
+            <div class="form-preview" id="formPreview">
+                <div class="preview-item">Price CNY: <strong id="previewPriceCNY">-</strong></div>
+                <div class="preview-item">Sale Price (with 0.99 tax): <strong id="previewSalePrice">-</strong></div>
+                <div class="preview-item">Profit After Tax: <strong id="previewProfit" class="positive">-</strong></div>
+                <div class="preview-item">Profit Margin: <strong id="previewMargin" class="positive">-</strong></div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn-primary" onclick="app.addItem()">Add Item</button>
+                <button class="btn-secondary" onclick="app.resetForm()">Clear</button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Search by skin name...">
+            <button onclick="app.filterByStatus('all')" class="active" id="filterAll">All Items</button>
+            <button onclick="app.filterByStatus('active')" id="filterActive">Active</button>
+            <button onclick="app.filterByStatus('sold')" id="filterSold">Sold</button>
+            <!-- Added export/import buttons -->
+            <button onclick="app.exportToJSON()" class="btn-primary" style="margin-left: auto;">📥 Export JSON</button>
+            <button onclick="document.getElementById('importFile').click()" class="btn-primary">📤 Import JSON</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="app.importFromJSON(event)">
+        </div>
+
+        <div class="metrics" id="metricsContainer"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="app.switchTab('inventory')">Inventory</button>
+            <button class="tab" onclick="app.switchTab('summary')">Summary</button>
+            <button class="tab" onclick="app.switchTab('people')">People Breakdown</button>
+        </div>
+
+        <div class="tab-content active" id="inventoryTab">
+            <div class="table-wrapper">
+                <div class="table-header">
+                    <div class="table-title">Current Inventory</div>
+                </div>
+                <table id="inventoryTable">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Skin Name</th>
+                            <th>Condition</th>
+                            <th>Price IDR</th>
+                            <th>Price CNY</th>
+                            <th>YouPin</th>
+                            <th>Sale Price</th>
+                            <th>Profit</th>
+                            <th>Margin %</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-content" id="summaryTab">
+            <div class="table-wrapper">
+                <div class="table-header">
+                    <div class="table-title">Monthly Summary</div>
+                </div>
+                <table id="summaryTable">
+                    <thead>
+                        <tr>
+                            <th>Person</th>
+                            <th>Month</th>
+                            <th>Total Investment (IDR)</th>
+                            <th>Total Investment (CNY)</th>
+                            <th>Profit %</th>
+                            <th>Total Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-content" id="peopleTab">
+            <div class="table-wrapper">
+                <div class="table-header">
+                    <div class="table-title">Profit Per Person</div>
+                </div>
+                <table id="peopleTable">
+                    <thead>
+                        <tr>
+                            <th>Person</th>
+                            <th>Items Invested</th>
+                            <th>Total Investment (CNY)</th>
+                            <th>Profit Per Person (CNY)</th>
+                            <th>Profit Per Person (IDR)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="peopleTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+        // Firebase Configuration
+        // IMPORTANT: Replace this with your own Firebase config
+        // Go to https://console.firebase.google.com/ to create a project and get your config
+        const firebaseConfig = {
+        apiKey: "AIzaSyDHa93cpbY0Wh7IEymcVV2bqZRfKrahdkc",
+        authDomain: "pasar-skin-tracker.firebaseapp.com",
+        databaseURL: "https://pasar-skin-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "pasar-skin-tracker",
+        storageBucket: "pasar-skin-tracker.firebasestorage.app",
+        messagingSenderId: "865539013174",
+        appId: "1:865539013174:web:48d664d844c125b6f1b697"
+        };
+
+        // Initialize Firebase only if config is set
+        let database = null;
+        let isFirebaseEnabled = false;
+        
+        try {
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                isFirebaseEnabled = true;
+                console.log('Firebase initialized successfully');
+            } else {
+                console.warn('Firebase not configured. Using local storage only.');
+            }
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            isFirebaseEnabled = false;
+        }
+
+        const app = {
+            data: [
+                { no: 1, name: "Driver Gloves | Overtake", condition: "Battle-Scarred", priceIDR: 950000, priceCNY: 395.83, currentYouPin: 448.00, salePrice: 443.52, profit: 47.69, profitMargin: 12.05, sold: false },
+                { no: 2, name: "Kukri Knife | Safari Mesh", condition: "Well-Worn", priceIDR: 760000, priceCNY: 316.67, currentYouPin: 370.89, salePrice: 368.43, profit: 51.76, profitMargin: 16.35, sold: false },
+            ],
+            
+            exchangeRate: 2400, // IDR to CNY conversion rate (approximate)
+            
+            peopleData: [
+                { person: "Daril", month: "January", investmentIDR: 1908500, investmentCNY: 795.21, profitPercent: 25.00, revenue: 2092356 },
+                { person: "Arez", month: "January", investmentIDR: 1908500, investmentCNY: 795.21, profitPercent: 25.00, revenue: 2092356 },
+                { person: "Fawwaz", month: "January", investmentIDR: 1908500, investmentCNY: 795.21, profitPercent: 25.00, revenue: 2092356 },
+                { person: "Panji", month: "January", investmentIDR: 1908500, investmentCNY: 795.21, profitPercent: 25.00, revenue: 2092356 }
+            ],
+
+            currentFilter: 'all',
+            currentTab: 'inventory',
+
+            init() {
+                this.attachSearchListener();
+                this.updateStorageStatus();
+                if (isFirebaseEnabled) {
+                    this.loadFromFirebase();
+                    this.setupRealtimeListeners();
+                } else {
+                    this.loadFromLocalStorage();
+                    this.renderAll();
+                }
+            },
+
+            updateStorageStatus() {
+                const statusEl = document.getElementById('storageStatus');
+                if (isFirebaseEnabled) {
+                    statusEl.innerHTML = '🟢 Connected to Cloud Storage - Data synced across all users';
+                    statusEl.style.color = '#10b981';
+                } else {
+                    statusEl.innerHTML = '🟡 Using Local Storage - Data saved only on this device';
+                    statusEl.style.color = '#f59e0b';
+                }
+            },
+
+            renderAll() {
+                this.renderMetrics();
+                this.renderInventory();
+                this.renderSummary();
+                this.renderPeople();
+            },
+
+            loadFromLocalStorage() {
+                try {
+                    const savedData = localStorage.getItem('pasarSkinData');
+                    if (savedData) {
+                        const parsed = JSON.parse(savedData);
+                        if (parsed.data) this.data = parsed.data;
+                        if (parsed.peopleData) this.peopleData = parsed.peopleData;
+                        if (parsed.exchangeRate) this.exchangeRate = parsed.exchangeRate;
+                    }
+                } catch (error) {
+                    console.error('Error loading from localStorage:', error);
+                }
+            },
+
+            saveToLocalStorage() {
+                try {
+                    const dataToSave = {
+                        data: this.data,
+                        peopleData: this.peopleData,
+                        exchangeRate: this.exchangeRate
+                    };
+                    localStorage.setItem('pasarSkinData', JSON.stringify(dataToSave));
+                } catch (error) {
+                    console.error('Error saving to localStorage:', error);
+                }
+            },
+
+            loadFromFirebase() {
+                const ref = database.ref('pasarSkinInventory');
+                ref.once('value')
+                    .then((snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            if (data.data) this.data = data.data;
+                            if (data.peopleData) this.peopleData = data.peopleData;
+                            if (data.exchangeRate) this.exchangeRate = data.exchangeRate;
+                        }
+                        this.renderAll();
+                    })
+                    .catch((error) => {
+                        console.error('Error loading from Firebase:', error);
+                        this.renderAll();
+                    });
+            },
+
+            saveToFirebase() {
+                if (!isFirebaseEnabled) {
+                    this.saveToLocalStorage();
+                    return;
+                }
+                
+                const dataToSave = {
+                    data: this.data,
+                    peopleData: this.peopleData,
+                    exchangeRate: this.exchangeRate,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                database.ref('pasarSkinInventory').set(dataToSave)
+                    .then(() => {
+                        console.log('Data saved to Firebase successfully');
+                    })
+                    .catch((error) => {
+                        console.error('Error saving to Firebase:', error);
+                        alert('Failed to save data to cloud. Please try again.');
+                    });
+            },
+
+            setupRealtimeListeners() {
+                const ref = database.ref('pasarSkinInventory');
+                ref.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        if (data.data) this.data = data.data;
+                        if (data.peopleData) this.peopleData = data.peopleData;
+                        if (data.exchangeRate) this.exchangeRate = data.exchangeRate;
+                        this.renderAll();
+                    }
+                });
+            },
+
+            calculatePriceCNY(priceIDR) {
+                return priceIDR / this.exchangeRate;
+            },
+
+            calculateSalePrice(youPinPrice) {
+                return youPinPrice * 0.99;
+            },
+
+            calculateProfit(salePrice, priceCNY) {
+                return salePrice - priceCNY;
+            },
+
+            calculateProfitMargin(profit, priceCNY) {
+                if (priceCNY === 0) return 0;
+                return (profit / priceCNY) * 100;
+            },
+
+            addItem() {
+                const skinName = document.getElementById('skinName').value.trim();
+                const condition = document.getElementById('condition').value;
+                const buyPriceIDR = parseFloat(document.getElementById('buyPriceIDR').value);
+                const youPinPrice = parseFloat(document.getElementById('youPinPrice').value);
+
+                // Validation
+                if (!skinName) {
+                    alert('Please enter a skin name');
+                    return;
+                }
+                if (isNaN(buyPriceIDR) || buyPriceIDR <= 0) {
+                    alert('Please enter a valid buy price in IDR');
+                    return;
+                }
+                if (isNaN(youPinPrice) || youPinPrice <= 0) {
+                    alert('Please enter a valid YouPin price');
+                    return;
+                }
+
+                // Calculations
+                const priceCNY = this.calculatePriceCNY(buyPriceIDR);
+                const salePrice = this.calculateSalePrice(youPinPrice);
+                const profit = this.calculateProfit(salePrice, priceCNY);
+                const profitMargin = this.calculateProfitMargin(profit, priceCNY);
+
+                // Create new item object
+                const newItem = {
+                    no: this.data.length + 1,
+                    name: skinName,
+                    condition: condition || 'N/A',
+                    priceIDR: buyPriceIDR,
+                    priceCNY: priceCNY,
+                    currentYouPin: youPinPrice,
+                    salePrice: salePrice,
+                    profit: profit,
+                    profitMargin: profitMargin,
+                    sold: false
+                };
+
+                // Add to data
+                this.data.push(newItem);
+
+                // Save to Firebase or localStorage
+                this.saveToFirebase();
+
+                // Reset form and update UI
+                this.resetForm();
+                if (!isFirebaseEnabled) {
+                    this.renderMetrics();
+                    this.renderInventory();
+                    this.renderPeople();
+                }
+            },
+
+            resetForm() {
+                document.getElementById('skinName').value = '';
+                document.getElementById('condition').value = '';
+                document.getElementById('buyPriceIDR').value = '';
+                document.getElementById('youPinPrice').value = '';
+                document.getElementById('formPreview').classList.remove('show');
+            },
+
+            deleteItem(index) {
+                if (confirm('Are you sure you want to delete this item?')) {
+                    this.data.splice(index, 1);
+                    this.data.forEach((item, idx) => item.no = idx + 1); // Reassign item numbers
+                    
+                    // Save to Firebase or localStorage
+                    this.saveToFirebase();
+                    
+                    if (!isFirebaseEnabled) {
+                        this.renderMetrics();
+                        this.renderInventory();
+                        this.renderPeople();
+                    }
+                }
+            },
+
+            exportToJSON() {
+                const dataToExport = {
+                    data: this.data,
+                    peopleData: this.peopleData,
+                    exchangeRate: this.exchangeRate
+                };
+                
+                const jsonString = JSON.stringify(dataToExport, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `pasar-skin-data-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                alert('Data exported successfully!');
+            },
+
+            importFromJSON(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        if (importedData.data && Array.isArray(importedData.data)) {
+                            this.data = importedData.data;
+                            if (importedData.peopleData) {
+                                this.peopleData = importedData.peopleData;
+                            }
+                            if (importedData.exchangeRate) {
+                                this.exchangeRate = importedData.exchangeRate;
+                            }
+                            
+                            // Save to Firebase or localStorage
+                            this.saveToFirebase();
+                            
+                            if (!isFirebaseEnabled) {
+                                this.renderMetrics();
+                                this.renderInventory();
+                                this.renderSummary();
+                                this.renderPeople();
+                            }
+                            alert('Data imported successfully!');
+                        } else {
+                            alert('Invalid JSON format. Please check your file.');
+                        }
+                    } catch (error) {
+                        alert('Error reading JSON file: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+                
+                // Reset file input so the same file can be imported again
+                document.getElementById('importFile').value = '';
+            },
+
+            renderMetrics() {
+                const totalInvestmentCNY = this.data.reduce((sum, item) => sum + item.priceCNY, 0);
+                const totalCurrentValueCNY = this.data.reduce((sum, item) => sum + item.currentYouPin, 0);
+                const totalProfit = this.data.reduce((sum, item) => sum + item.profit, 0);
+                const avgProfitMargin = this.data.length > 0 ? (this.data.reduce((sum, item) => sum + item.profitMargin, 0) / this.data.length) : 0;
+
+                const metrics = [
+                    {
+                        label: "Total Investment",
+                        value: `¥${totalInvestmentCNY.toFixed(2)}`,
+                        change: `${(totalInvestmentCNY * this.exchangeRate).toLocaleString('id-ID')} IDR`,
+                        positive: false
+                    },
+                    {
+                        label: "Total Items",
+                        value: `${this.data.length}`,
+                        change: "Inventory items",
+                        positive: true
+                    },
+                    {
+                        label: "Total Profit (After Tax)",
+                        value: `¥${totalProfit.toFixed(2)}`,
+                        change: `${((totalProfit / totalInvestmentCNY) * 100).toFixed(2)}% gain`,
+                        positive: totalProfit > 0
+                    },
+                    {
+                        label: "Average Profit Margin",
+                        value: `${avgProfitMargin.toFixed(2)}%`,
+                        change: `${this.data.length} items`,
+                        positive: avgProfitMargin > 0
+                    }
+                ];
+
+                const container = document.getElementById('metricsContainer');
+                container.innerHTML = metrics.map(metric => `
+                    <div class="metric-card">
+                        <div class="metric-label">${metric.label}</div>
+                        <div class="metric-value ${metric.positive ? 'metric-positive' : 'metric-negative'}">${metric.value}</div>
+                        <div class="metric-change">${metric.change}</div>
+                    </div>
+                `).join('');
+            },
+
+            renderInventory() {
+                const tbody = document.getElementById('inventoryTableBody');
+                const filtered = this.getFilteredData();
+                
+                tbody.innerHTML = filtered.map((item, index) => `
+                    <tr>
+                        <td>${item.no}</td>
+                        <td class="item-name">${item.name}</td>
+                        <td>${item.condition}</td>
+                        <td>${item.priceIDR.toLocaleString('id-ID')}</td>
+                        <td>¥${item.priceCNY.toFixed(2)}</td>
+                        <td>¥${item.currentYouPin.toFixed(2)}</td>
+                        <td>¥${item.salePrice.toFixed(2)}</td>
+                        <td class="${item.profit >= 0 ? 'positive' : 'negative'}">¥${item.profit.toFixed(2)}</td>
+                        <td class="${item.profitMargin >= 0 ? 'positive' : 'negative'}">
+                            <span class="profit-indicator ${item.profitMargin >= 0 ? 'positive' : 'negative'}"></span>
+                            ${item.profitMargin.toFixed(2)}%
+                        </td>
+                        <td><span class="neutral">${item.sold ? 'Sold' : 'In Stock'}</span></td>
+                        <td><button class="delete-btn" onclick="app.deleteItem(${this.data.indexOf(item)})">Delete</button></td>
+                    </tr>
+                `).join('');
+            },
+
+            renderSummary() {
+                const tbody = document.getElementById('summaryTableBody');
+                tbody.innerHTML = this.peopleData.map(item => `
+                    <tr>
+                        <td>${item.person}</td>
+                        <td>${item.month}</td>
+                        <td>${item.investmentIDR.toLocaleString('id-ID')}</td>
+                        <td>¥${item.investmentCNY.toFixed(2)}</td>
+                        <td class="positive">${item.profitPercent.toFixed(2)}%</td>
+                        <td>${item.revenue.toLocaleString('id-ID')}</td>
+                    </tr>
+                `).join('');
+            },
+
+            renderPeople() {
+                const tbody = document.getElementById('peopleTableBody');
+                const peopleMap = {};
+
+                this.data.forEach(item => {
+                    if (!peopleMap[item.name]) {
+                        peopleMap[item.name] = { items: 0, investmentCNY: 0, profitCNY: 0 };
+                    }
+                    peopleMap[item.name].items++;
+                    peopleMap[item.name].investmentCNY += item.priceCNY;
+                    peopleMap[item.name].profitCNY += item.profit * 0.25;
+                });
+
+                tbody.innerHTML = Object.entries(peopleMap).map(([person, data]) => {
+                    const profitIDR = data.profitCNY * this.exchangeRate;
+                    return `
+                        <tr>
+                            <td>${person}</td>
+                            <td>${data.items}</td>
+                            <td>¥${data.investmentCNY.toFixed(2)}</td>
+                            <td class="${data.profitCNY >= 0 ? 'positive' : 'negative'}">¥${data.profitCNY.toFixed(2)}</td>
+                            <td class="${data.profitCNY >= 0 ? 'positive' : 'negative'}">${profitIDR.toLocaleString('id-ID')}</td>
+                        </tr>
+                    `;
+                }).join('');
+            },
+
+            getFilteredData() {
+                let filtered = this.data;
+
+                if (this.currentFilter === 'sold') {
+                    filtered = filtered.filter(item => item.sold);
+                } else if (this.currentFilter === 'active') {
+                    filtered = filtered.filter(item => !item.sold);
+                }
+
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                if (searchTerm) {
+                    filtered = filtered.filter(item => item.name.toLowerCase().includes(searchTerm));
+                }
+
+                return filtered;
+            },
+
+            filterByStatus(status) {
+                this.currentFilter = status;
+                document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+                const buttonMap = { all: 'filterAll', active: 'filterActive', sold: 'filterSold' };
+                document.getElementById(buttonMap[status]).classList.add('active');
+                this.renderInventory();
+            },
+
+            switchTab(tab) {
+                this.currentTab = tab;
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                
+                const tabMap = { inventory: 'inventoryTab', summary: 'summaryTab', people: 'peopleTab' };
+                document.getElementById(tab).classList.add('active');
+                document.getElementById(tabMap[tab]).classList.add('active');
+            },
+
+            attachSearchListener() {
+                document.getElementById('searchInput').addEventListener('input', () => {
+                    this.renderInventory();
+                });
+            }
+        };
+
+        // Initialize on load
+        window.addEventListener('load', () => app.init());
+    </script>
+</body>
+</html>
