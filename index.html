@@ -464,7 +464,153 @@
             color-scheme: dark;
         }
 
+        /* Login Screen Styles */
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .login-screen.hidden {
+            display: none;
+        }
+
+        .login-box {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 48px;
+            width: 90%;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-logo {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 16px;
+            margin-bottom: 16px;
+            font-family: inherit;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 14px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .login-error {
+            color: #ef4444;
+            font-size: 14px;
+            text-align: center;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            background: #475569;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .logout-btn:hover {
+            background: #334155;
+        }
+
+        .app-container {
+            display: none;
+        }
+
+        .app-container.unlocked {
+            display: block;
+        }
+
         input[type="date"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        input[type="password"] {
+            padding: 10px 16px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input[type="password"]:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -498,6 +644,29 @@
     </style>
 </head>
 <body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <div class="login-logo">🔒</div>
+            <div class="login-title">PasarSkin Access</div>
+            <div class="login-subtitle">Enter password to continue</div>
+            <input 
+                type="password" 
+                id="passwordInput" 
+                class="login-input" 
+                placeholder="Password"
+                onkeypress="if(event.key === 'Enter') auth.login()"
+            >
+            <button class="login-button" onclick="auth.login()">Unlock</button>
+            <div id="loginError" class="login-error">Incorrect password. Please try again.</div>
+        </div>
+    </div>
+
+    <!-- Logout Button -->
+    <button id="logoutBtn" class="logout-btn" onclick="auth.logout()" style="display: none;">🔓 Logout</button>
+
+    <!-- Main App Container -->
+    <div id="appContainer" class="app-container">
     <div class="container">
         <header>
             <div class="logo">🎮 PasarSkin</div>
@@ -806,12 +975,136 @@
             </div>
         </div>
     </div>
+    </div>
+    </div>
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
     <script>
+        // ==========================================
+        // AUTHENTICATION SYSTEM
+        // ==========================================
+        // To change the password:
+        // 1. Go to https://emn178.github.io/online-tools/sha256.html
+        // 2. Enter your new password and generate SHA-256 hash
+        // 3. Replace the hash below with your new hash
+        // 
+        // Current password: "pasarskin2026"
+        // ==========================================
+        
+        const auth = {
+            // SHA-256 hash of the password (currently "pasarskin2026")
+            passwordHash: '8421d17934c1935c05506ce13bda3c6b2ea59ad22320e5cd104e2a1498c8ac72', // CHANGE THIS
+            
+            // Initialize authentication on page load
+            init() {
+                // Check if user is already authenticated in this session
+                const isAuthenticated = sessionStorage.getItem('pasarskin_auth') === 'true';
+                
+                if (isAuthenticated && this.verifySession()) {
+                    this.unlockApp();
+                } else {
+                    this.showLogin();
+                }
+            },
+            
+            // Verify session is valid
+            verifySession() {
+                const authTime = sessionStorage.getItem('pasarskin_auth_time');
+                if (!authTime) return false;
+                
+                // Session expires after 24 hours
+                const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+                const now = new Date().getTime();
+                
+                if (now - parseInt(authTime) > sessionDuration) {
+                    // Session expired
+                    sessionStorage.removeItem('pasarskin_auth');
+                    sessionStorage.removeItem('pasarskin_auth_time');
+                    return false;
+                }
+                
+                return true;
+            },
+            
+            // Hash password using SHA-256
+            async hashPassword(password) {
+                const msgBuffer = new TextEncoder().encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                return hashHex;
+            },
+            
+            // Login function
+            async login() {
+                const passwordInput = document.getElementById('passwordInput');
+                const password = passwordInput.value;
+                const errorEl = document.getElementById('loginError');
+                
+                if (!password) {
+                    errorEl.classList.add('show');
+                    errorEl.textContent = 'Please enter a password';
+                    return;
+                }
+                
+                // Hash the entered password
+                const enteredHash = await this.hashPassword(password);
+                
+                // Compare with stored hash
+                if (enteredHash === this.passwordHash) {
+                    // Correct password
+                    sessionStorage.setItem('pasarskin_auth', 'true');
+                    sessionStorage.setItem('pasarskin_auth_time', new Date().getTime().toString());
+                    this.unlockApp();
+                } else {
+                    // Wrong password
+                    errorEl.classList.add('show');
+                    errorEl.textContent = 'Incorrect password. Please try again.';
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            },
+            
+            // Unlock and show the app
+            unlockApp() {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('appContainer').classList.add('unlocked');
+                document.getElementById('logoutBtn').style.display = 'block';
+                
+                // Initialize the app after unlocking
+                if (typeof app !== 'undefined') {
+                    app.init();
+                }
+            },
+            
+            // Show login screen
+            showLogin() {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('appContainer').classList.remove('unlocked');
+                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('passwordInput').focus();
+            },
+            
+            // Logout function
+            logout() {
+                if (confirm('Are you sure you want to logout?')) {
+                    sessionStorage.removeItem('pasarskin_auth');
+                    sessionStorage.removeItem('pasarskin_auth_time');
+                    this.showLogin();
+                    
+                    // Clear password input
+                    document.getElementById('passwordInput').value = '';
+                    document.getElementById('loginError').classList.remove('show');
+                }
+            }
+        };
+        
+        // Initialize authentication on page load
+        auth.init();
+
         // Firebase Configuration
         // IMPORTANT: Replace this with your own Firebase config
         // Go to https://console.firebase.google.com/ to create a project and get your config
