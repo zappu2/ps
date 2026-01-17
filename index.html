@@ -644,6 +644,11 @@
     </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen hidden">
+        <div class="loading-spinner"></div>
+    </div>
+
     <!-- Login Screen -->
     <div id="loginScreen" class="login-screen">
         <div class="login-box">
@@ -670,7 +675,7 @@
     <div class="container">
         <header>
             <div class="logo">🎮 PasarSkin</div>
-            <div class="subtitle">Skin Trading Inventory Tracker</div>
+            <div class="subtitle">CS:GO Skin Trading Inventory Tracker</div>
             <div id="storageStatus" style="margin-top: 10px; font-size: 12px; color: #64748b;"></div>
             
             <!-- Cycle Selector -->
@@ -997,6 +1002,8 @@
         const auth = {
             // SHA-256 hash of the password (currently "pasarskin2026")
             passwordHash: '8421d17934c1935c05506ce13bda3c6b2ea59ad22320e5cd104e2a1498c8ac72', // CHANGE THIS
+            inactivityTimer: null,
+            inactivityDuration: 30 * 60 * 1000, // 30 minutes in milliseconds
             
             // Initialize authentication on page load
             init() {
@@ -1069,15 +1076,24 @@
             },
             
             // Unlock and show the app
-            unlockApp() {
+            async unlockApp() {
+                // Show loading screen
+                document.getElementById('loadingScreen').classList.remove('hidden');
                 document.getElementById('loginScreen').classList.add('hidden');
+                
+                // Initialize the app and wait for data to load
+                if (typeof app !== 'undefined') {
+                    await app.init();
+                }
+                
+                // Hide loading screen and show app
+                document.getElementById('loadingScreen').classList.add('hidden');
                 document.getElementById('appContainer').classList.add('unlocked');
                 document.getElementById('logoutBtn').style.display = 'block';
                 
-                // Initialize the app after unlocking
-                if (typeof app !== 'undefined') {
-                    app.init();
-                }
+                // Start inactivity timer
+                this.startInactivityTimer();
+                this.setupActivityListeners();
             },
             
             // Show login screen
@@ -1089,16 +1105,76 @@
             },
             
             // Logout function
-            logout() {
-                if (confirm('Are you sure you want to logout?')) {
+            logout(auto = false) {
+                const message = auto ? 
+                    'You have been logged out due to inactivity.' : 
+                    'Are you sure you want to logout?';
+                    
+                if (auto || confirm(message)) {
                     sessionStorage.removeItem('pasarskin_auth');
                     sessionStorage.removeItem('pasarskin_auth_time');
-                    this.showLogin();
+                    this.stopInactivityTimer();
+                    this.removeActivityListeners();
                     
-                    // Clear password input
-                    document.getElementById('passwordInput').value = '';
-                    document.getElementById('loginError').classList.remove('show');
+                    if (auto) {
+                        // Auto logout - refresh the page
+                        alert(message);
+                        window.location.reload();
+                    } else {
+                        this.showLogin();
+                        
+                        // Clear password input
+                        document.getElementById('passwordInput').value = '';
+                        document.getElementById('loginError').classList.remove('show');
+                    }
                 }
+            },
+            
+            // Start inactivity timer
+            startInactivityTimer() {
+                this.resetInactivityTimer();
+            },
+            
+            // Reset inactivity timer
+            resetInactivityTimer() {
+                // Clear existing timer
+                if (this.inactivityTimer) {
+                    clearTimeout(this.inactivityTimer);
+                }
+                
+                // Set new timer
+                this.inactivityTimer = setTimeout(() => {
+                    this.logout(true);
+                }, this.inactivityDuration);
+            },
+            
+            // Stop inactivity timer
+            stopInactivityTimer() {
+                if (this.inactivityTimer) {
+                    clearTimeout(this.inactivityTimer);
+                    this.inactivityTimer = null;
+                }
+            },
+            
+            // Setup activity listeners
+            setupActivityListeners() {
+                const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+                events.forEach(event => {
+                    document.addEventListener(event, this.handleActivity.bind(this), true);
+                });
+            },
+            
+            // Remove activity listeners
+            removeActivityListeners() {
+                const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+                events.forEach(event => {
+                    document.removeEventListener(event, this.handleActivity.bind(this), true);
+                });
+            },
+            
+            // Handle user activity
+            handleActivity() {
+                this.resetInactivityTimer();
             }
         };
         
@@ -1127,12 +1203,8 @@
                 firebase.initializeApp(firebaseConfig);
                 database = firebase.database();
                 isFirebaseEnabled = true;
-                console.log('Firebase initialized successfully');
-            } else {
-                console.warn('Firebase not configured. Using local storage only.');
             }
         } catch (error) {
-            console.error('Firebase initialization error:', error);
             isFirebaseEnabled = false;
         }
 
@@ -1182,11 +1254,13 @@
             viewMode: 'simple', // 'simple' or 'complete'
             editingIndex: null,
 
-            init() {
+            async init() {
                 this.attachSearchListener();
                 this.updateStorageStatus();
+                
                 if (isFirebaseEnabled) {
-                    this.loadFromFirebase();
+                    // Wait for Firebase data to load before continuing
+                    await this.loadFromFirebase();
                     this.setupRealtimeListeners();
                 } else {
                     this.loadFromLocalStorage();
@@ -1194,8 +1268,6 @@
                 }
                 
                 this.renderCycleSelector();
-                // Initial render for people tab (will be overwritten by Firebase if data exists)
-                console.log('Init complete, peopleData count:', this.peopleData.length);
             },
 
             updateStorageStatus() {
@@ -1236,7 +1308,7 @@
                         if (parsed.exchangeRate) this.exchangeRate = parsed.exchangeRate;
                     }
                 } catch (error) {
-                    console.error('Error loading from localStorage:', error);
+                    // Silent fail
                 }
             },
 
@@ -1249,13 +1321,13 @@
                     };
                     localStorage.setItem('pasarSkinData', JSON.stringify(dataToSave));
                 } catch (error) {
-                    console.error('Error saving to localStorage:', error);
+                    // Silent fail
                 }
             },
 
             loadFromFirebase() {
                 const ref = database.ref('pasarSkinInventory');
-                ref.once('value')
+                return ref.once('value')
                     .then((snapshot) => {
                         const data = snapshot.val();
                         if (data) {
@@ -1277,7 +1349,6 @@
                         this.renderAll();
                     })
                     .catch((error) => {
-                        console.error('Error loading from Firebase:', error);
                         this.renderAll();
                     });
             },
@@ -1297,10 +1368,9 @@
                 
                 database.ref('pasarSkinInventory').set(dataToSave)
                     .then(() => {
-                        console.log('Data saved to Firebase successfully');
+                        // Success
                     })
                     .catch((error) => {
-                        console.error('Error saving to Firebase:', error);
                         alert('Failed to save data to cloud. Please try again.');
                     });
             },
@@ -1774,8 +1844,6 @@
             renderSummary() {
                 const tbody = document.getElementById('summaryTableBody');
                 
-                console.log('Rendering summary, cycles:', this.cycles);
-                
                 // Calculate per-cycle summary from all cycles
                 const cycleEntries = Object.entries(this.cycles);
                 
@@ -1810,9 +1878,6 @@
             renderPeople() {
                 const tbody = document.getElementById('peopleTableBody');
                 
-                console.log('Rendering people, count:', this.peopleData.length);
-                console.log('People data:', this.peopleData);
-                
                 if (this.peopleData.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="8" class="no-data">No people entries yet. Add your first entry above!</td></tr>';
                     return;
@@ -1820,7 +1885,6 @@
                 
                 // Calculate total profit from CURRENT CYCLE inventory only
                 const totalInventoryProfit = this.data.reduce((sum, item) => sum + item.profit, 0);
-                console.log('Total inventory profit (current cycle):', totalInventoryProfit);
                 
                 // Calculate total capital invested by all people
                 const totalCapitalCNY = this.peopleData.reduce((sum, person) => {
@@ -1831,7 +1895,6 @@
                     const capital = person.hargaIDR || person.investmentIDR || 0;
                     return sum + capital;
                 }, 0);
-                console.log('Total capital CNY:', totalCapitalCNY);
                 
                 // Calculate total inventory cost (actual money spent)
                 const totalInventoryCostCNY = this.data.reduce((sum, item) => sum + item.priceCNY, 0);
@@ -1840,7 +1903,6 @@
                 // Calculate leftover (SISA) - capital that wasn't spent on inventory
                 const leftoverCNY = totalCapitalCNY - totalInventoryCostCNY;
                 const leftoverIDR = totalCapitalIDR - totalInventoryCostIDR;
-                console.log('Leftover (SISA) CNY:', leftoverCNY, 'IDR:', leftoverIDR);
                 
                 const html = this.peopleData.map((person, index) => {
                     // Handle both old and new data formats
@@ -1883,9 +1945,7 @@
                     `;
                 }).join('');
                 
-                console.log('Generated HTML length:', html.length);
                 tbody.innerHTML = html;
-                console.log('Table body updated, row count:', tbody.querySelectorAll('tr').length);
             },
 
             addPerson() {
@@ -1893,8 +1953,6 @@
                 const customName = document.getElementById('customPersonName').value.trim();
                 const hargaIDRInput = document.getElementById('personHargaIDR').value;
                 const tanggal = document.getElementById('personTanggal').value;
-
-                console.log('Adding person:', { personName, hargaIDRInput, tanggal }); // Debug
 
                 // If "Other" is selected, use custom name
                 if (personName === 'Other' && customName) {
@@ -1957,7 +2015,6 @@
                     profitIDR: totalProfitIDR
                 };
 
-                console.log('New person:', newPerson); // Debug
                 this.peopleData.push(newPerson);
                 
                 // Save and render
