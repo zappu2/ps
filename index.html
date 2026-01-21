@@ -1740,65 +1740,134 @@
                 const inventoryContainer = document.getElementById('inventoryTab');
                 const filteredData = this.getFilteredData();
 
-                const rows = filteredData.map((item, index) => {
-                    const salePriceIDR = this.calculateSalePriceIDR(item.salePrice);
-                    // Backward compatibility: handle old data structure
-                    let statusText = 'In Stock';
-                    if (item.sold || item.status === 'sold') {
-                        statusText = 'Sold';
-                    } else if (item.status === 'not-tradable') {
-                        statusText = 'Not Tradable';
-                    }
-                    
-                    return `
-                        <tr>
-                            <td>${item.no}</td>
-                            <td class="item-name">${item.name}</td>
-                            <td>${item.condition}</td>
-                            <td>${item.priceIDR.toLocaleString()}</td>
-                            <td>${item.priceCNY.toFixed(2)}</td>
-                            <td>${item.currentYouPin.toFixed(2)}</td>
-                            <td>${item.salePrice.toFixed(2)}</td>
-                            <td>${salePriceIDR.toLocaleString()}</td>
-                            <td>${item.profit.toFixed(2)}</td>
-                            <td>${item.profitMargin.toFixed(2)}%</td>
-                            <td>${statusText}</td>
-                            <td>
-                                <button class="edit-btn" onclick="app.openEditModal(${index})">Edit</button>
-                                <button class="delete-btn" onclick="app.deleteItem(${index})">Delete</button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
+                let tableHTML;
+                
+                if (this.viewMode === 'simple') {
+                    // Simple view - basic columns only
+                    const rows = filteredData.map((item, index) => {
+                        let statusText = 'In Stock';
+                        if (item.sold || item.status === 'sold') {
+                            statusText = 'Sold';
+                        } else if (item.status === 'not-tradable') {
+                            statusText = 'Not Tradable';
+                        }
+                        
+                        return `
+                            <tr>
+                                <td>${item.no}</td>
+                                <td class="item-name">${item.name}</td>
+                                <td>${item.condition}</td>
+                                <td>${item.priceIDR.toLocaleString()}</td>
+                                <td>${item.priceCNY.toFixed(2)}</td>
+                                <td>${item.currentYouPin.toFixed(2)}</td>
+                                <td>${item.salePrice.toFixed(2)}</td>
+                                <td class="${item.profit >= 0 ? 'positive' : 'negative'}">${item.profit.toFixed(2)}</td>
+                                <td class="${item.profitMargin >= 0 ? 'positive' : 'negative'}">${item.profitMargin.toFixed(2)}%</td>
+                                <td>${statusText}</td>
+                                <td>
+                                    <button class="edit-btn" onclick="app.openEditModal(${index})">Edit</button>
+                                    <button class="delete-btn" onclick="app.deleteItem(${index})">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
 
-                const tableHTML = `
-                    <div class="table-wrapper">
-                        <div class="table-header">
-                            <div class="table-title">Current Inventory</div>
+                    tableHTML = `
+                        <div class="table-wrapper">
+                            <div class="table-header">
+                                <div class="table-title">Current Inventory - Simple View</div>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Skin Name</th>
+                                        <th>Condition</th>
+                                        <th>Buy Price (IDR)</th>
+                                        <th>Buy Price (CNY)</th>
+                                        <th>Current YouPin (CNY)</th>
+                                        <th>Sale Price (CNY)</th>
+                                        <th>Profit (CNY)</th>
+                                        <th>Profit Margin</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows || '<tr><td colspan="11" class="no-data">No inventory data available</td></tr>'}
+                                </tbody>
+                            </table>
                         </div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Skin Name</th>
-                                    <th>Condition</th>
-                                    <th>Buy Price (IDR)</th>
-                                    <th>Buy Price (CNY)</th>
-                                    <th>Current YouPin (CNY)</th>
-                                    <th>Sale Price (CNY)</th>
-                                    <th>Sale Price (IDR)</th>
-                                    <th>Profit (CNY)</th>
-                                    <th>Profit Margin</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${rows || '<tr><td colspan="12" class="no-data">No inventory data available</td></tr>'}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
+                    `;
+                } else {
+                    // Complete view - all columns including dates and Sale Price IDR
+                    const rows = filteredData.map((item, index) => {
+                        const salePriceIDR = this.calculateSalePriceIDR(item.salePrice);
+                        let statusText = 'In Stock';
+                        if (item.sold || item.status === 'sold') {
+                            statusText = 'Sold';
+                        } else if (item.status === 'not-tradable') {
+                            statusText = 'Not Tradable';
+                        }
+                        
+                        return `
+                            <tr>
+                                <td>${item.no}</td>
+                                <td class="item-name">${item.name}</td>
+                                <td>${item.condition}</td>
+                                <td>${item.priceIDR.toLocaleString()}</td>
+                                <td>${item.priceCNY.toFixed(2)}</td>
+                                <td>${item.currentYouPin.toFixed(2)}</td>
+                                <td>${item.salePrice.toFixed(2)}</td>
+                                <td>${salePriceIDR.toLocaleString()}</td>
+                                <td class="${item.profit >= 0 ? 'positive' : 'negative'}">${item.profit.toFixed(2)}</td>
+                                <td class="${item.profitMargin >= 0 ? 'positive' : 'negative'}">${item.profitMargin.toFixed(2)}%</td>
+                                <td>${item.buyDate || '-'}</td>
+                                <td>${item.sellDate || '-'}</td>
+                                <td>${item.method || 'Pricempire'}</td>
+                                <td>${statusText}</td>
+                                <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${item.note || '-'}</td>
+                                <td>
+                                    <button class="edit-btn" onclick="app.openEditModal(${index})">Edit</button>
+                                    <button class="delete-btn" onclick="app.deleteItem(${index})">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    tableHTML = `
+                        <div class="table-wrapper">
+                            <div class="table-header">
+                                <div class="table-title">Current Inventory - Complete View</div>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Skin Name</th>
+                                        <th>Condition</th>
+                                        <th>Buy Price (IDR)</th>
+                                        <th>Buy Price (CNY)</th>
+                                        <th>Current YouPin (CNY)</th>
+                                        <th>Sale Price (CNY)</th>
+                                        <th>Sale Price (IDR)</th>
+                                        <th>Profit (CNY)</th>
+                                        <th>Profit Margin</th>
+                                        <th>Buy Date</th>
+                                        <th>Sell Date</th>
+                                        <th>Method</th>
+                                        <th>Status</th>
+                                        <th>Note</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows || '<tr><td colspan="16" class="no-data">No inventory data available</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
 
                 inventoryContainer.innerHTML = tableHTML;
             },
