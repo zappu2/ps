@@ -686,6 +686,7 @@
                 </select>
                 <button onclick="app.createNewCycle()" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">+ New Cycle</button>
                 <button onclick="app.manageCycles()" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">Manage Cycles</button>
+                <button onclick="app.renderSettingsModal()" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">Settings</button>
             </div>
         </header>
 
@@ -733,6 +734,7 @@
                     <select id="itemStatus">
                         <option value="in-stock">In Stock</option>
                         <option value="sold">Sold</option>
+                        <option value="not-tradable">Not Tradable</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -801,10 +803,9 @@
                             <th>Price CNY</th>
                             <th>YouPin</th>
                             <th>Sale Price</th>
+                            <th>Sale Price (IDR)</th>
                             <th>Profit</th>
                             <th>Margin %</th>
-                            <th>Buy Date</th>
-                            <th>Sell Date</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
@@ -938,6 +939,7 @@
                     <select id="editItemStatus">
                         <option value="in-stock">In Stock</option>
                         <option value="sold">Sold</option>
+                        <option value="not-tradable">Not Tradable</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -970,16 +972,6 @@
         </div>
     </div>
 
-    <!-- Cycle Management Modal -->
-    <div id="cycleModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">Manage Cycles</div>
-            <div id="cycleListContainer" style="max-height: 400px; overflow-y: auto;"></div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="app.closeCycleModal()">Close</button>
-            </div>
-        </div>
-    </div>
     </div>
     </div>
 
@@ -987,20 +979,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <script>
-        // ==========================================
-        // AUTHENTICATION SYSTEM
-        // ==========================================
-        // To change the password:
-        // 1. Go to https://emn178.github.io/online-tools/sha256.html
-        // 2. Enter your new password and generate SHA-256 hash
-        // 3. Replace the hash below with your new hash
-        // 
-        // Current password: "pasarskin2026"
-        // ==========================================
-        
+    <script>    
         const auth = {
-            passwordHash: '86c8487e0bd9542f523bf1fee228a0dbe1827981bdcaeb628da95ce18c58254d',
+            passwordHash: '86c8487e0bd9542f523bf1fee228a0dbe1827981bdcaeb628da95ce18c58254d', // CHANGE THIS
             inactivityTimer: null,
             inactivityDuration: 30 * 60 * 1000, // 30 minutes in milliseconds
             
@@ -1438,6 +1419,10 @@
                 return youPinPrice * 0.99;
             },
 
+            calculateSalePriceIDR(salePriceCNY) {
+                return salePriceCNY * this.exchangeRate;
+            },
+
             calculateProfit(salePrice, priceCNY) {
                 return salePrice - priceCNY;
             },
@@ -1494,6 +1479,7 @@
                     profit: profit,
                     profitMargin: profitMargin,
                     sold: itemStatus === 'sold',
+                    status: itemStatus,
                     buyDate: buyDate || '',
                     sellDate: sellDate || '',
                     method: itemMethod || 'Pricempire',
@@ -1540,7 +1526,7 @@
                 document.getElementById('editSalePriceOverride').value = item.salePrice || '';
                 document.getElementById('editBuyDate').value = item.buyDate || '';
                 document.getElementById('editSellDate').value = item.sellDate || '';
-                document.getElementById('editItemStatus').value = item.sold ? 'sold' : 'in-stock';
+                document.getElementById('editItemStatus').value = item.status || (item.sold ? 'sold' : 'in-stock');
                 document.getElementById('editItemMethod').value = item.method || 'Pricempire';
                 document.getElementById('editItemNote').value = item.note || '';
                 
@@ -1601,6 +1587,7 @@
                     profit: profit,
                     profitMargin: profitMargin,
                     sold: itemStatus === 'sold',
+                    status: itemStatus,
                     buyDate: buyDate || '',
                     sellDate: sellDate || '',
                     method: itemMethod || 'Pricempire',
@@ -1636,101 +1623,52 @@
             },
 
             exportToJSON() {
-                const dataToExport = {
-                    cycles: this.cycles,
-                    currentCycle: this.currentCycle,
-                    exchangeRate: this.exchangeRate
-                };
-                
-                const jsonString = JSON.stringify(dataToExport, null, 2);
-                const blob = new Blob([jsonString], { type: 'application/json' });
+                const cycleData = this.cycles[this.currentCycle];
+                if (!cycleData) {
+                    alert('No data available for the selected cycle.');
+                    return;
+                }
+
+                const dataStr = JSON.stringify({ [this.currentCycle]: cycleData }, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `pasar-skin-data-${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `cycle_${this.currentCycle}.json`;
+                a.click();
                 URL.revokeObjectURL(url);
-                alert('Data exported successfully!');
+
+                alert(`Cycle ${this.currentCycle} data exported successfully!`);
             },
 
             importFromJSON(event) {
                 const file = event.target.files[0];
-                if (!file) return;
+                if (!file) {
+                    alert('No file selected.');
+                    return;
+                }
 
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
                         const importedData = JSON.parse(e.target.result);
-                        
-                        if (importedData.cycles) {
-                            // Import cycles as NEW cycles (never override existing)
-                            const existingCycleIds = Object.keys(this.cycles).map(id => parseInt(id));
-                            const maxExistingId = existingCycleIds.length > 0 ? Math.max(...existingCycleIds) : 0;
-                            
-                            let importedCount = 0;
-                            Object.entries(importedData.cycles).forEach(([cycleId, cycleData]) => {
-                                const newCycleId = maxExistingId + importedCount + 1;
-                                this.cycles[newCycleId] = {
-                                    name: cycleData.name || `Imported Cycle ${newCycleId}`,
-                                    data: cycleData.data || [],
-                                    peopleData: cycleData.peopleData || []
-                                };
-                                importedCount++;
-                            });
-                            
-                            if (importedData.exchangeRate) {
-                                this.exchangeRate = importedData.exchangeRate;
+                        for (const [cycleId, cycleContent] of Object.entries(importedData)) {
+                            if (!this.cycles[cycleId]) {
+                                this.cycles[cycleId] = cycleContent;
+                            } else {
+                                alert(`Cycle ${cycleId} already exists and was not overwritten.`);
                             }
-                            
-                            // Switch to first imported cycle
-                            this.currentCycle = maxExistingId + 1;
-                            
-                            // Save to Firebase or localStorage
-                            this.saveToFirebase();
-                            this.renderCycleSelector();
-                            
-                            if (!isFirebaseEnabled) {
-                                this.renderAll();
-                            }
-                            alert(`Successfully imported ${importedCount} cycle(s) as new cycle(s)!`);
-                        } else if (importedData.data && Array.isArray(importedData.data)) {
-                            // Old format - import as NEW cycle (never override)
-                            const existingCycleIds = Object.keys(this.cycles).map(id => parseInt(id));
-                            const maxExistingId = existingCycleIds.length > 0 ? Math.max(...existingCycleIds) : 0;
-                            const newCycleId = maxExistingId + 1;
-                            
-                            this.cycles[newCycleId] = {
-                                name: `Imported Cycle ${newCycleId}`,
-                                data: importedData.data,
-                                peopleData: importedData.peopleData || []
-                            };
-                            if (importedData.exchangeRate) {
-                                this.exchangeRate = importedData.exchangeRate;
-                            }
-                            
-                            // Switch to new cycle
-                            this.currentCycle = newCycleId;
-                            
-                            // Save to Firebase or localStorage
-                            this.saveToFirebase();
-                            this.renderCycleSelector();
-                            
-                            if (!isFirebaseEnabled) {
-                                this.renderAll();
-                            }
-                            alert(`Data imported successfully as Cycle ${newCycleId}!`);
-                        } else {
-                            alert('Invalid JSON format. Please check your file.');
                         }
+                        this.saveToLocalStorage();
+                        this.renderAll();
+                        alert('Cycle data imported successfully!');
                     } catch (error) {
-                        alert('Error reading JSON file: ' + error.message);
+                        alert('Invalid JSON file. Please check the file and try again.');
                     }
                 };
                 reader.readAsText(file);
-                
-                // Reset file input so the same file can be imported again
+
                 document.getElementById('importFile').value = '';
             },
 
@@ -1778,91 +1716,62 @@
             },
 
             renderInventory() {
-                const tbody = document.getElementById('inventoryTableBody');
-                const thead = document.querySelector('#inventoryTable thead tr');
-                const filtered = this.getFilteredData();
-                
-                if (this.viewMode === 'simple') {
-                    // Simple view header
-                    thead.innerHTML = `
-                        <th>No</th>
-                        <th>Skin Name</th>
-                        <th>Condition</th>
-                        <th>Price CNY</th>
-                        <th>YouPin</th>
-                        <th>Sale Price</th>
-                        <th>Profit</th>
-                        <th>Margin %</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    `;
-                    
-                    tbody.innerHTML = filtered.map((item, index) => `
+                const inventoryContainer = document.getElementById('inventoryTab');
+                const filteredData = this.getFilteredData();
+
+                const rows = filteredData.map((item, index) => {
+                    const salePriceIDR = this.calculateSalePriceIDR(item.salePrice);
+                    return `
                         <tr>
                             <td>${item.no}</td>
                             <td class="item-name">${item.name}</td>
                             <td>${item.condition}</td>
-                            <td>¥${item.priceCNY.toFixed(2)}</td>
-                            <td>¥${item.currentYouPin.toFixed(2)}</td>
-                            <td>¥${item.salePrice.toFixed(2)}</td>
-                            <td class="${item.profit >= 0 ? 'positive' : 'negative'}">¥${item.profit.toFixed(2)}</td>
-                            <td class="${item.profitMargin >= 0 ? 'positive' : 'negative'}">
-                                <span class="profit-indicator ${item.profitMargin >= 0 ? 'positive' : 'negative'}"></span>
-                                ${item.profitMargin.toFixed(2)}%
-                            </td>
-                            <td><span class="neutral">${item.sold ? 'Sold' : 'In Stock'}</span></td>
+                            <td>${item.priceIDR.toLocaleString()}</td>
+                            <td>${item.priceCNY.toFixed(2)}</td>
+                            <td>${item.currentYouPin.toFixed(2)}</td>
+                            <td>${item.salePrice.toFixed(2)}</td>
+                            <td>${salePriceIDR.toLocaleString()}</td>
+                            <td>${item.profit.toFixed(2)}</td>
+                            <td>${item.profitMargin.toFixed(2)}%</td>
+                            <td>${item.sold ? 'Sold' : (item.status === 'not-tradable' ? 'Not Tradable' : 'In Stock')}</td>
                             <td>
-                                <button class="edit-btn" onclick="app.openEditModal(${this.data.indexOf(item)})">Edit</button>
-                                <button class="delete-btn" onclick="app.deleteItem(${this.data.indexOf(item)})">Delete</button>
+                                <button class="edit-btn" onclick="app.openEditModal(${index})">Edit</button>
+                                <button class="delete-btn" onclick="app.deleteItem(${index})">Delete</button>
                             </td>
                         </tr>
-                    `).join('');
-                } else {
-                    // Complete view header
-                    thead.innerHTML = `
-                        <th>No</th>
-                        <th>Skin Name</th>
-                        <th>Condition</th>
-                        <th>Price IDR</th>
-                        <th>Price CNY</th>
-                        <th>YouPin</th>
-                        <th>Sale Price</th>
-                        <th>Profit</th>
-                        <th>Margin %</th>
-                        <th>Buy Date</th>
-                        <th>Sell Date</th>
-                        <th>Method</th>
-                        <th>Note</th>
-                        <th>Status</th>
-                        <th>Action</th>
                     `;
-                    
-                    tbody.innerHTML = filtered.map((item, index) => `
-                        <tr>
-                            <td>${item.no}</td>
-                            <td class="item-name">${item.name}</td>
-                            <td>${item.condition}</td>
-                            <td>${item.priceIDR.toLocaleString('id-ID')}</td>
-                            <td>¥${item.priceCNY.toFixed(2)}</td>
-                            <td>¥${item.currentYouPin.toFixed(2)}</td>
-                            <td>¥${item.salePrice.toFixed(2)}</td>
-                            <td class="${item.profit >= 0 ? 'positive' : 'negative'}">¥${item.profit.toFixed(2)}</td>
-                            <td class="${item.profitMargin >= 0 ? 'positive' : 'negative'}">
-                                <span class="profit-indicator ${item.profitMargin >= 0 ? 'positive' : 'negative'}"></span>
-                                ${item.profitMargin.toFixed(2)}%
-                            </td>
-                            <td>${item.buyDate || '-'}</td>
-                            <td>${item.sellDate || '-'}</td>
-                            <td>${item.method || 'Pricempire'}</td>
-                            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.note || ''}">${item.note || '-'}</td>
-                            <td><span class="neutral">${item.sold ? 'Sold' : 'In Stock'}</span></td>
-                            <td>
-                                <button class="edit-btn" onclick="app.openEditModal(${this.data.indexOf(item)})">Edit</button>
-                                <button class="delete-btn" onclick="app.deleteItem(${this.data.indexOf(item)})">Delete</button>
-                            </td>
-                        </tr>
-                    `).join('');
-                }
+                }).join('');
+
+                const tableHTML = `
+                    <div class="table-wrapper">
+                        <div class="table-header">
+                            <div class="table-title">Current Inventory</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Skin Name</th>
+                                    <th>Condition</th>
+                                    <th>Buy Price (IDR)</th>
+                                    <th>Buy Price (CNY)</th>
+                                    <th>Current YouPin (CNY)</th>
+                                    <th>Sale Price (CNY)</th>
+                                    <th>Sale Price (IDR)</th>
+                                    <th>Profit (CNY)</th>
+                                    <th>Profit Margin</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows || '<tr><td colspan="12" class="no-data">No inventory data available</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                inventoryContainer.innerHTML = tableHTML;
             },
 
             switchViewMode(mode) {
@@ -2127,170 +2036,68 @@
                 }
             },
 
-            getFilteredData() {
-                let filtered = this.data;
-
-                if (this.currentFilter === 'sold') {
-                    filtered = filtered.filter(item => item.sold);
-                } else if (this.currentFilter === 'active') {
-                    filtered = filtered.filter(item => !item.sold);
-                }
-
-                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-                if (searchTerm) {
-                    filtered = filtered.filter(item => item.name.toLowerCase().includes(searchTerm));
-                }
-
-                return filtered;
-            },
-
-            filterByStatus(status) {
-                this.currentFilter = status;
-                document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
-                const buttonMap = { all: 'filterAll', active: 'filterActive', sold: 'filterSold' };
-                document.getElementById(buttonMap[status]).classList.add('active');
-                this.renderInventory();
-            },
-
-            switchTab(tab) {
-                this.currentTab = tab;
-                
-                // Remove active class from all tabs
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                
-                // Remove active class from all tab contents
-                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-                
-                // Add active class to the clicked tab
-                const clickedTab = event.target;
-                clickedTab.classList.add('active');
-                
-                // Show the corresponding tab content
-                const tabMap = { 
-                    inventory: 'inventoryTab', 
-                    summary: 'summaryTab', 
-                    people: 'peopleTab' 
-                };
-                
-                const targetTab = document.getElementById(tabMap[tab]);
-                if (targetTab) {
-                    targetTab.classList.add('active');
+            renderSettingsModal() {
+                // Remove existing settings modal if it exists
+                const existingModal = document.getElementById('settingsModal');
+                if (existingModal) {
+                    existingModal.remove();
                 }
                 
-                // Render the content for the active tab
-                if (tab === 'inventory') {
-                    this.renderInventory();
-                } else if (tab === 'summary') {
-                    this.renderSummary();
-                } else if (tab === 'people') {
-                    this.renderPeople();
-                }
-            },
-
-            renderCycleSelector() {
-                const selector = document.getElementById('cycleSelector');
-                const cycleIds = Object.keys(this.cycles).sort((a, b) => parseInt(a) - parseInt(b));
-                
-                selector.innerHTML = cycleIds.map(id => 
-                    `<option value="${id}" ${id == this.currentCycle ? 'selected' : ''}>${this.cycles[id].name}</option>`
-                ).join('');
-            },
-
-            switchCycle(cycleId) {
-                this.currentCycle = parseInt(cycleId);
-                this.saveToFirebase();
-                this.renderAll();
-            },
-
-            createNewCycle() {
-                const cycleName = prompt('Enter name for new cycle:', `Cycle ${Object.keys(this.cycles).length + 1}`);
-                if (!cycleName) return;
-                
-                const newCycleId = Math.max(...Object.keys(this.cycles).map(id => parseInt(id))) + 1;
-                this.cycles[newCycleId] = {
-                    name: cycleName,
-                    data: [],
-                    peopleData: []
-                };
-                
-                this.currentCycle = newCycleId;
-                this.renderCycleSelector();
-                this.saveToFirebase();
-                this.renderAll();
-                alert(`New cycle "${cycleName}" created!`);
-            },
-
-            manageCycles() {
-                const container = document.getElementById('cycleListContainer');
-                const cycleEntries = Object.entries(this.cycles).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
-                
-                const html = cycleEntries.map(([id, cycle]) => {
-                    const isCurrent = id == this.currentCycle;
-                    const isLast = cycleEntries.length === 1;
-                    
-                    return `
-                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; margin-bottom: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 8px; ${isCurrent ? 'border-color: #3b82f6;' : ''}">
-                            <div style="flex: 1;">
-                                <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">
-                                    ${cycle.name || `Cycle ${id}`}
-                                    ${isCurrent ? '<span style="margin-left: 8px; padding: 2px 8px; background: #3b82f6; border-radius: 4px; font-size: 11px;">CURRENT</span>' : ''}
-                                </div>
-                                <div style="font-size: 12px; color: #94a3b8;">
-                                    ${(cycle.data || []).length} items, ${(cycle.peopleData || []).length} people
-                                </div>
+                const modalHTML = `
+                    <div id="settingsModal" class="modal show">
+                        <div class="modal-content">
+                            <div class="modal-header">Settings</div>
+                            <div class="form-group">
+                                <label for="exchangeRateInput">Exchange Rate (IDR to CNY)</label>
+                                <input type="number" id="exchangeRateInput" value="${this.exchangeRate}" class="login-input" step="0.01">
                             </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="edit-btn" onclick="app.renameCycle(${id})" style="padding: 6px 12px;">Rename</button>
-                                <button class="delete-btn" onclick="app.deleteCycle(${id})" 
-                                    ${isCurrent || isLast ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : 'style="padding: 6px 12px;"'}>
-                                    Delete
-                                </button>
+                            <div class="modal-actions">
+                                <button class="btn-primary" onclick="app.saveSettings()">Save</button>
+                                <button class="btn-secondary" onclick="app.closeSettingsModal()">Cancel</button>
                             </div>
                         </div>
-                    `;
-                }).join('');
-                
-                container.innerHTML = html || '<div class="no-data">No cycles available</div>';
-                document.getElementById('cycleModal').classList.add('show');
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
             },
 
-            closeCycleModal() {
-                document.getElementById('cycleModal').classList.remove('show');
+            closeSettingsModal() {
+                const modal = document.getElementById('settingsModal');
+                if (modal) {
+                    modal.remove();
+                }
             },
 
-            renameCycle(cycleId) {
-                const cycle = this.cycles[cycleId];
-                if (!cycle) return;
-                
-                const newName = prompt(`Rename "${cycle.name}" to:`, cycle.name);
-                if (newName && newName.trim()) {
-                    this.cycles[cycleId].name = newName.trim();
-                    this.renderCycleSelector();
+            saveSettings() {
+                const newExchangeRate = parseFloat(document.getElementById('exchangeRateInput').value);
+                if (!isNaN(newExchangeRate) && newExchangeRate > 0) {
+                    this.exchangeRate = newExchangeRate;
+                    
+                    // Recalculate all items with new exchange rate
+                    Object.keys(this.cycles).forEach(cycleId => {
+                        const cycle = this.cycles[cycleId];
+                        if (cycle.data) {
+                            cycle.data = cycle.data.map(item => {
+                                const priceCNY = this.calculatePriceCNY(item.priceIDR);
+                                const profit = this.calculateProfit(item.salePrice, priceCNY);
+                                const profitMargin = this.calculateProfitMargin(profit, priceCNY);
+                                return {
+                                    ...item,
+                                    priceCNY: priceCNY,
+                                    profit: profit,
+                                    profitMargin: profitMargin
+                                };
+                            });
+                        }
+                    });
+                    
                     this.saveToFirebase();
-                    this.manageCycles(); // Refresh the modal
                     this.renderAll();
+                    alert('Settings saved successfully!');
+                } else {
+                    alert('Please enter a valid exchange rate.');
                 }
-            },
-
-            deleteCycle(cycleId) {
-                if (cycleId == this.currentCycle) {
-                    alert('Cannot delete the current cycle. Switch to another cycle first.');
-                    return;
-                }
-                
-                if (Object.keys(this.cycles).length <= 1) {
-                    alert('Cannot delete the last cycle.');
-                    return;
-                }
-                
-                const cycle = this.cycles[cycleId];
-                if (confirm(`Delete cycle "${cycle.name}"?\n\nThis will permanently delete ${(cycle.data || []).length} items and ${(cycle.peopleData || []).length} people entries.\n\nThis cannot be undone!`)) {
-                    delete this.cycles[cycleId];
-                    this.renderCycleSelector();
-                    this.saveToFirebase();
-                    this.manageCycles(); // Refresh the modal
-                    this.renderAll();
-                }
+                this.closeSettingsModal();
             },
 
             attachSearchListener() {
