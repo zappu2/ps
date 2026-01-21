@@ -2129,6 +2129,134 @@
                 this.closeSettingsModal();
             },
 
+            getFilteredData() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                
+                let filtered = this.data.filter(item => {
+                    const matchesSearch = item.name.toLowerCase().includes(searchTerm);
+                    
+                    if (this.currentFilter === 'all') return matchesSearch;
+                    if (this.currentFilter === 'sold') return matchesSearch && item.sold;
+                    if (this.currentFilter === 'active') return matchesSearch && !item.sold;
+                    
+                    return matchesSearch;
+                });
+                
+                return filtered;
+            },
+
+            filterByStatus(status) {
+                this.currentFilter = status;
+                document.getElementById('filterAll').classList.toggle('active', status === 'all');
+                document.getElementById('filterActive').classList.toggle('active', status === 'active');
+                document.getElementById('filterSold').classList.toggle('active', status === 'sold');
+                this.renderInventory();
+            },
+
+            switchTab(tab) {
+                this.currentTab = tab;
+                
+                // Update tab buttons
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`${tab}Tab`).classList.add('active');
+                
+                // Render the active tab
+                if (tab === 'inventory') this.renderInventory();
+                if (tab === 'summary') this.renderSummary();
+                if (tab === 'people') this.renderPeople();
+            },
+
+            renderCycleSelector() {
+                const cycleSelector = document.getElementById('cycleSelector');
+                if (!cycleSelector) return;
+                
+                const options = Object.keys(this.cycles).map(cycleId => {
+                    const cycle = this.cycles[cycleId];
+                    const selected = parseInt(cycleId) === this.currentCycle ? 'selected' : '';
+                    return `<option value="${cycleId}" ${selected}>${cycle.name}</option>`;
+                }).join('');
+                
+                cycleSelector.innerHTML = options;
+            },
+
+            switchCycle(cycleId) {
+                this.currentCycle = parseInt(cycleId);
+                this.renderAll();
+            },
+
+            createNewCycle() {
+                const cycleName = prompt('Enter name for new cycle:');
+                if (!cycleName) return;
+                
+                const newCycleId = Math.max(...Object.keys(this.cycles).map(Number), 0) + 1;
+                this.cycles[newCycleId] = {
+                    name: cycleName,
+                    data: [],
+                    peopleData: []
+                };
+                
+                this.currentCycle = newCycleId;
+                this.saveToFirebase();
+                this.renderCycleSelector();
+                this.renderAll();
+                alert(`New cycle "${cycleName}" created!`);
+            },
+
+            manageCycles() {
+                const cycleEntries = Object.entries(this.cycles);
+                const cycleListHTML = cycleEntries.map(([cycleId, cycle]) => `
+                    <div style="padding: 16px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 500; color: #e2e8f0;">${cycle.name}</div>
+                            <div style="font-size: 12px; color: #94a3b8;">${cycle.data?.length || 0} items, ${cycle.peopleData?.length || 0} people</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="edit-btn" onclick="app.renameCycle(${cycleId})">Rename</button>
+                            ${cycleEntries.length > 1 ? `<button class="delete-btn" onclick="app.deleteCycle(${cycleId})">Delete</button>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('cycleListContainer').innerHTML = cycleListHTML;
+                document.getElementById('cycleModal').classList.add('show');
+            },
+
+            closeCycleModal() {
+                document.getElementById('cycleModal').classList.remove('show');
+            },
+
+            renameCycle(cycleId) {
+                const cycle = this.cycles[cycleId];
+                const newName = prompt('Enter new name for cycle:', cycle.name);
+                if (newName && newName.trim()) {
+                    cycle.name = newName.trim();
+                    this.saveToFirebase();
+                    this.renderCycleSelector();
+                    this.manageCycles();
+                }
+            },
+
+            deleteCycle(cycleId) {
+                const cycle = this.cycles[cycleId];
+                if (confirm(`Are you sure you want to delete cycle "${cycle.name}"? This cannot be undone.`)) {
+                    delete this.cycles[cycleId];
+                    
+                    // Switch to another cycle if the current one was deleted
+                    if (this.currentCycle === parseInt(cycleId)) {
+                        this.currentCycle = parseInt(Object.keys(this.cycles)[0]);
+                    }
+                    
+                    this.saveToFirebase();
+                    this.renderCycleSelector();
+                    this.renderAll();
+                    this.closeCycleModal();
+                }
+            },
+
             attachSearchListener() {
                 document.getElementById('searchInput').addEventListener('input', () => {
                     this.renderInventory();
