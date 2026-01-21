@@ -1650,17 +1650,24 @@
                     return;
                 }
 
-                const dataStr = JSON.stringify({ [this.currentCycle]: cycleData }, null, 2);
+                // Export only the cycle content (name, data, peopleData) without the cycle ID
+                const exportData = {
+                    name: cycleData.name,
+                    data: cycleData.data,
+                    peopleData: cycleData.peopleData
+                };
+
+                const dataStr = JSON.stringify(exportData, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
 
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `cycle_${this.currentCycle}.json`;
+                a.download = `${cycleData.name.replace(/[^a-z0-9]/gi, '_')}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
 
-                alert(`Cycle ${this.currentCycle} data exported successfully!`);
+                alert(`Cycle "${cycleData.name}" exported successfully!`);
             },
 
             importFromJSON(event) {
@@ -1674,16 +1681,24 @@
                 reader.onload = (e) => {
                     try {
                         const importedData = JSON.parse(e.target.result);
-                        for (const [cycleId, cycleContent] of Object.entries(importedData)) {
-                            if (!this.cycles[cycleId]) {
-                                this.cycles[cycleId] = cycleContent;
-                            } else {
-                                alert(`Cycle ${cycleId} already exists and was not overwritten.`);
-                            }
-                        }
-                        this.saveToLocalStorage();
+                        
+                        // Generate a new cycle ID (find the highest existing ID and add 1)
+                        const newCycleId = Math.max(...Object.keys(this.cycles).map(Number), 0) + 1;
+                        
+                        // Add the imported cycle with the new ID
+                        this.cycles[newCycleId] = {
+                            name: importedData.name || 'Imported Cycle',
+                            data: importedData.data || [],
+                            peopleData: importedData.peopleData || []
+                        };
+                        
+                        // Switch to the newly imported cycle
+                        this.currentCycle = newCycleId;
+                        
+                        this.saveToFirebase();
+                        this.renderCycleSelector();
                         this.renderAll();
-                        alert('Cycle data imported successfully!');
+                        alert(`Cycle "${this.cycles[newCycleId].name}" imported successfully!`);
                     } catch (error) {
                         alert('Invalid JSON file. Please check the file and try again.');
                     }
