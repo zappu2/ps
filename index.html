@@ -1274,9 +1274,28 @@
                         this.renderAll();
                     }
                     
+                    // Ensure at least one cycle exists
+                    if (Object.keys(this.cycles).length === 0) {
+                        this.cycles[1] = {
+                            name: 'Cycle 1',
+                            data: [],
+                            peopleData: []
+                        };
+                        this.currentCycle = 1;
+                        this.saveToFirebase();
+                    }
+                    
                     this.renderCycleSelector();
                 } catch (error) {
-                    // If there's an error, still try to render with default data
+                    // If there's an error, create default cycle
+                    if (Object.keys(this.cycles).length === 0) {
+                        this.cycles[1] = {
+                            name: 'Cycle 1',
+                            data: [],
+                            peopleData: []
+                        };
+                        this.currentCycle = 1;
+                    }
                     this.renderCycleSelector();
                     this.renderAll();
                 }
@@ -1526,7 +1545,9 @@
                 document.getElementById('editSalePriceOverride').value = item.salePrice || '';
                 document.getElementById('editBuyDate').value = item.buyDate || '';
                 document.getElementById('editSellDate').value = item.sellDate || '';
-                document.getElementById('editItemStatus').value = item.status || (item.sold ? 'sold' : 'in-stock');
+                // Backward compatibility: check both status field and sold boolean
+                const itemStatus = item.status || (item.sold ? 'sold' : 'in-stock');
+                document.getElementById('editItemStatus').value = itemStatus;
                 document.getElementById('editItemMethod').value = item.method || 'Pricempire';
                 document.getElementById('editItemNote').value = item.note || '';
                 
@@ -1721,6 +1742,14 @@
 
                 const rows = filteredData.map((item, index) => {
                     const salePriceIDR = this.calculateSalePriceIDR(item.salePrice);
+                    // Backward compatibility: handle old data structure
+                    let statusText = 'In Stock';
+                    if (item.sold || item.status === 'sold') {
+                        statusText = 'Sold';
+                    } else if (item.status === 'not-tradable') {
+                        statusText = 'Not Tradable';
+                    }
+                    
                     return `
                         <tr>
                             <td>${item.no}</td>
@@ -1733,7 +1762,7 @@
                             <td>${salePriceIDR.toLocaleString()}</td>
                             <td>${item.profit.toFixed(2)}</td>
                             <td>${item.profitMargin.toFixed(2)}%</td>
-                            <td>${item.sold ? 'Sold' : (item.status === 'not-tradable' ? 'Not Tradable' : 'In Stock')}</td>
+                            <td>${statusText}</td>
                             <td>
                                 <button class="edit-btn" onclick="app.openEditModal(${index})">Edit</button>
                                 <button class="delete-btn" onclick="app.deleteItem(${index})">Delete</button>
